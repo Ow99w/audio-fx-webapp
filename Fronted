@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Audio FX Editor</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;500;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #14141f;
+    --surface2: #1e1e2e;
+    --accent: #7c5cfc;
+    --accent-glow: rgba(124, 92, 252, 0.3);
+    --accent2: #fc5c8c;
+    --text: #e8e6f0;
+    --text-dim: #7a7890;
+    --border: #2a2a3e;
+    --slider-track: #2a2a3e;
+    --slider-fill: linear-gradient(90deg, #7c5cfc, #a855f7);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding: 0 16px 100px;
+  }
+
+  /* Ambient glow */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(124,92,252,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(252,92,140,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { position: relative; z-index: 1; max-width: 420px; margin: 0 auto; }
+
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 24px 0 16px;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #e8e6f0 30%, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header p {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Waveform */
+  .waveform-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .waveform-container::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(90deg, transparent 49.5%, var(--accent) 49.5%, var(--accent) 50.5%, transparent 50.5%);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  canvas#waveform {
+    width: 100%;
+    height: 80px;
+    display: block;
+    border-radius: 8px;
+  }
+
+  /* Preset chips */
+  .presets {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 0 0 16px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .presets::-webkit-scrollbar { display: none; }
+  .preset-chip {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .preset-chip:hover, .preset-chip.active {
+    border-color: var(--accent);
+    color: var(--text);
+    background: var(--surface2);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+
+  /* Slider section */
+  .param-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    transition: border-color 0.3s;
+  }
+  .param-section:hover {
+    border-color: rgba(124, 92, 252, 0.3);
+  }
+  .param-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .param-label {
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .param-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+  }
+  .param-icon.pitch { background: rgba(124, 92, 252, 0.15); }
+  .param-icon.speed { background: rgba(252, 165, 92, 0.15); }
+  .param-icon.reverb { background: rgba(92, 200, 252, 0.15); }
+  .param-icon.bass { background: rgba(252, 92, 140, 0.15); }
+
+  .param-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent);
+    min-width: 50px;
+    text-align: right;
+  }
+
+  /* Range slider */
+  .slider-wrap {
+    position: relative;
+    height: 36px;
+    display: flex;
+    align-items: center;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--slider-track);
+    outline: none;
+    position: relative;
+    z-index: 2;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--accent-glow), 0 2px 8px rgba(0,0,0,0.3);
+    transition: transform 0.15s;
+    border: 2px solid #fff;
+  }
+  input[type=range]::-webkit-slider-thumb:active {
+    transform: scale(1.2);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--accent-glow);
+    border: 2px solid #fff;
+  }
+
+  .slider-fill {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 6px;
+    border-radius: 3px;
+    background: var(--slider-fill);
+    pointer-events: none;
+    z-index: 1;
+    transition: width 0.05s;
+  }
+
+  .slider-range {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+
+  /* Reset button */
+  .reset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: 8px;
+  }
+  .reset-btn:hover {
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+
+  /* Apply button */
+  .apply-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px;
+    background: linear-gradient(transparent, var(--bg) 30%);
+    z-index: 100;
+  }
+  .apply-btn {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    display: block;
+    padding: 16px;
+    border-radius: 14px;
+    border: none;
+    background: linear-gradient(135deg, #7c5cfc, #a855f7);
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px var(--accent-glow);
+  }
+  .apply-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(124, 92, 252, 0.4);
+  }
+  .apply-btn:active {
+    transform: scale(0.98);
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .param-section { animation: fadeUp 0.4s ease both; }
+  .param-section:nth-child(2) { animation-delay: 0.05s; }
+  .param-section:nth-child(3) { animation-delay: 0.1s; }
+  .param-section:nth-child(4) { animation-delay: 0.15s; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🎛 Audio FX Editor</h1>
+    <p>Настрой звучание и отправь в чат</p>
+  </div>
+
+  <div class="waveform-container">
+    <canvas id="waveform"></canvas>
+  </div>
+
+  <div class="presets">
+    <div class="preset-chip" data-preset="slowed_reverb">🐌 Slowed+Reverb</div>
+    <div class="preset-chip" data-preset="nightcore">🌸 Nightcore</div>
+    <div class="preset-chip" data-preset="bass_boost">🔊 Bass Boost</div>
+    <div class="preset-chip" data-preset="8d">🎧 8D Audio</div>
+    <div class="preset-chip" data-preset="chipmunk">🐿 Chipmunk</div>
+  </div>
+
+  <div id="sliders">
+    <div class="param-section">
+      <div class="param-header">
+        <span class="param-label">
+          <span class="param-icon pitch">🗣</span> Тон / Pitch
+        </span>
+        <span class="param-value" id="val-pitch">1.00</span>
+        <button class="reset-btn" data-param="pitch">↺</button>
+      </div>
+      <div class="slider-wrap">
+        <div class="slider-fill" id="fill-pitch"></div>
+        <input type="range" id="pitch" min="50" max="150" value="100" step="5">
+      </div>
+      <div class="slider-range"><span>0.50</span><span>1.50</span></div>
+    </div>
+
+    <div class="param-section">
+      <div class="param-header">
+        <span class="param-label">
+          <span class="param-icon speed">🚀</span> Скорость / Speed
+        </span>
+        <span class="param-value" id="val-speed">1.0</span>
+        <button class="reset-btn" data-param="speed">↺</button>
+      </div>
+      <div class="slider-wrap">
+        <div class="slider-fill" id="fill-speed"></div>
+        <input type="range" id="speed" min="5" max="20" value="10" step="1">
+      </div>
+      <div class="slider-range"><span>0.5</span><span>2.0</span></div>
+    </div>
+
+    <div class="param-section">
+      <div class="param-header">
+        <span class="param-label">
+          <span class="param-icon reverb">🏛</span> Реверберация / Reverb
+        </span>
+        <span class="param-value" id="val-reverb">0</span>
+        <button class="reset-btn" data-param="reverb">↺</button>
+      </div>
+      <div class="slider-wrap">
+        <div class="slider-fill" id="fill-reverb"></div>
+        <input type="range" id="reverb" min="0" max="30" value="0" step="1">
+      </div>
+      <div class="slider-range"><span>0</span><span>30</span></div>
+    </div>
+
+    <div class="param-section">
+      <div class="param-header">
+        <span class="param-label">
+          <span class="param-icon bass">🎸</span> Bass Boost
+        </span>
+        <span class="param-value" id="val-bass">0</span>
+        <button class="reset-btn" data-param="bass">↺</button>
+      </div>
+      <div class="slider-wrap">
+        <div class="slider-fill" id="fill-bass"></div>
+        <input type="range" id="bass" min="0" max="15" value="0" step="1">
+      </div>
+      <div class="slider-range"><span>0</span><span>15</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="apply-bar">
+  <button class="apply-btn" id="applyBtn">✨ Применить эффекты</button>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.expand();
+  tg.ready();
+  // Adapt to Telegram theme
+  const tc = tg.themeParams;
+  if (tc && tc.bg_color) {
+    document.documentElement.style.setProperty('--bg', tc.bg_color);
+    document.documentElement.style.setProperty('--text', tc.text_color || '#e8e6f0');
+  }
+}
+
+// Parse initial params from URL hash: #p85-s12-r15-b7
+const hash = window.location.hash.slice(1);
+const initParams = {};
+if (hash) {
+  hash.split('-').forEach(part => {
+    if (part.length >= 2) {
+      const key = {p:'pitch', s:'speed', r:'reverb', b:'bass'}[part[0]];
+      if (key) initParams[key] = parseInt(part.slice(1));
+    }
+  });
+}
+
+const DEFAULTS = { pitch: 100, speed: 10, reverb: 0, bass: 0 };
+const params = { ...DEFAULTS, ...initParams };
+
+const PRESETS = {
+  slowed_reverb: { pitch: 85, speed: 10, reverb: 15, bass: 0 },
+  nightcore:     { pitch: 125, speed: 10, reverb: 0, bass: 0 },
+  bass_boost:    { pitch: 100, speed: 10, reverb: 0, bass: 12 },
+  '8d':          { pitch: 100, speed: 10, reverb: 10, bass: 3 },
+  chipmunk:      { pitch: 150, speed: 10, reverb: 0, bass: 0 },
+};
+
+// --- Waveform ---
+const canvas = document.getElementById('waveform');
+const ctx = canvas.getContext('2d');
+let dpr = window.devicePixelRatio || 1;
+let waveData = [];
+
+function initWaveform() {
+  canvas.width = canvas.offsetWidth * dpr;
+  canvas.height = canvas.offsetHeight * dpr;
+  ctx.scale(dpr, dpr);
+  // Generate sample waveform
+  const w = canvas.offsetWidth;
+  waveData = [];
+  for (let i = 0; i < w; i++) {
+    const t = i / w;
+    const amp = 0.3 + 0.7 * (
+      Math.sin(t * 12) * 0.3 +
+      Math.sin(t * 28 + 1) * 0.25 +
+      Math.sin(t * 60) * 0.15 +
+      Math.sin(t * 120) * 0.1 +
+      Math.random() * 0.2
+    );
+    waveData.push(Math.max(0.05, Math.min(1, amp)));
+  }
+  drawWaveform();
+}
+
+function drawWaveform() {
+  const w = canvas.offsetWidth;
+  const h = canvas.offsetHeight;
+  ctx.clearRect(0, 0, w, h);
+
+  const pitchFactor = params.pitch / 100;
+  const speedFactor = params.speed / 10;
+  const bassLevel = params.bass / 15;
+  const reverbLevel = params.reverb / 30;
+
+  for (let i = 0; i < w; i++) {
+    const srcIdx = Math.floor((i * speedFactor) % waveData.length);
+    let amp = waveData[srcIdx] * pitchFactor;
+    // Bass boost: increase low-frequency contribution
+    amp += bassLevel * 0.3 * Math.sin(i * 0.02);
+    amp = Math.max(0.02, Math.min(1, amp));
+
+    const barH = amp * h * 0.85;
+    const y = (h - barH) / 2;
+
+    // Reverb: add glow/echo
+    if (reverbLevel > 0) {
+      const echoAmp = amp * reverbLevel * 0.4;
+      const echoH = echoAmp * h * 0.85;
+      const echoY = (h - echoH) / 2;
+      ctx.fillStyle = `rgba(124, 92, 252, ${reverbLevel * 0.15})`;
+      ctx.fillRect(i, echoY, 1, echoH);
+    }
+
+    const gradient = ctx.createLinearGradient(0, y, 0, y + barH);
+    gradient.addColorStop(0, `rgba(124, 92, 252, ${0.5 + amp * 0.5})`);
+    gradient.addColorStop(0.5, `rgba(168, 85, 247, ${0.7 + amp * 0.3})`);
+    gradient.addColorStop(1, `rgba(252, 92, 140, ${0.3 + bassLevel * 0.5})`);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(i, y, 1, barH);
+  }
+}
+
+// --- Slider logic ---
+function updateSlider(name) {
+  const slider = document.getElementById(name);
+  const fill = document.getElementById(`fill-${name}`);
+  const valEl = document.getElementById(`val-${name}`);
+
+  const min = parseFloat(slider.min);
+  const max = parseFloat(slider.max);
+  const val = parseFloat(slider.value);
+  const pct = ((val - min) / (max - min)) * 100;
+  fill.style.width = `${pct}%`;
+  params[name] = val;
+
+  if (name === 'pitch') valEl.textContent = (val / 100).toFixed(2);
+  else if (name === 'speed') valEl.textContent = (val / 10).toFixed(1);
+  else valEl.textContent = val;
+
+  drawWaveform();
+  updatePresetHighlight();
+}
+
+function setParam(name, val) {
+  const slider = document.getElementById(name);
+  slider.value = val;
+  updateSlider(name);
+}
+
+['pitch','speed','reverb','bass'].forEach(name => {
+  const slider = document.getElementById(name);
+  slider.addEventListener('input', () => updateSlider(name));
+  if (initParams[name] !== undefined) slider.value = initParams[name];
+  updateSlider(name);
+});
+
+// Reset buttons
+document.querySelectorAll('.reset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const name = btn.dataset.param;
+    setParam(name, DEFAULTS[name]);
+  });
+});
+
+// Presets
+function updatePresetHighlight() {
+  document.querySelectorAll('.preset-chip').forEach(chip => {
+    const preset = PRESETS[chip.dataset.preset];
+    if (!preset) return;
+    const match = Object.keys(preset).every(k => Math.abs(params[k] - preset[k]) < 2);
+    chip.classList.toggle('active', match);
+  });
+}
+
+document.querySelectorAll('.preset-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const preset = PRESETS[chip.dataset.preset];
+    if (!preset) return;
+    Object.entries(preset).forEach(([k, v]) => setParam(k, v));
+  });
+});
+
+// Apply
+document.getElementById('applyBtn').addEventListener('click', () => {
+  const data = JSON.stringify({
+    pitch: params.pitch / 100,
+    speed: params.speed / 10,
+    reverb: parseInt(params.reverb),
+    bass: parseInt(params.bass),
+  });
+
+  if (tg && tg.sendData) {
+    tg.sendData(data);
+  } else {
+    // Debug mode (opened outside Telegram)
+    alert('Data: ' + data);
+    console.log('WebApp data:', data);
+  }
+});
+
+// Init
+window.addEventListener('resize', initWaveform);
+initWaveform();
+updatePresetHighlight();
+</script>
+</body>
+</html>
