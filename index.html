@@ -126,13 +126,6 @@
     font-size: 11px; color: var(--text-dim);
     font-family: 'JetBrains Mono', monospace; margin-top: 2px;
   }
-
-  #dbg {
-    position: fixed; bottom: 60px; left: 10px; right: 10px;
-    font-size: 11px; color: #0f0; font-family: monospace;
-    background: rgba(0,0,0,0.8); padding: 6px 10px; border-radius: 8px;
-    display: none; z-index: 999; max-height: 80px; overflow: auto;
-  }
 </style>
 </head>
 <body>
@@ -147,21 +140,80 @@
     <canvas id="waveCanvas"></canvas>
   </div>
 
-  <div class="chips" id="chips"></div>
-  <div id="cards"></div>
+  <div class="chips">
+    <div class="chip" data-pk="slowed_reverb">🐌 Slowed+Reverb</div>
+    <div class="chip" data-pk="nightcore">🌸 Nightcore</div>
+    <div class="chip" data-pk="bass_boost">🔊 Bass Boost</div>
+    <div class="chip" data-pk="8d">🎧 8D Audio</div>
+    <div class="chip" data-pk="chipmunk">🐿 Chipmunk</div>
+  </div>
+
+  <!-- Pitch -->
+  <div class="card">
+    <div class="card-top">
+      <span class="ico ico-pitch">🗣</span>
+      <span class="card-label">Тон / Pitch</span>
+      <span class="card-val" id="val-pitch">1.00</span>
+      <button class="rst" data-key="pitch">↺</button>
+    </div>
+    <div class="trk" id="trk-pitch">
+      <div class="trk-bg"></div>
+      <div class="trk-fill" id="fill-pitch"></div>
+      <div class="trk-knob" id="knob-pitch"></div>
+    </div>
+    <div class="trk-lim"><span>0.50</span><span>1.50</span></div>
+  </div>
+
+  <!-- Speed -->
+  <div class="card">
+    <div class="card-top">
+      <span class="ico ico-speed">🚀</span>
+      <span class="card-label">Скорость / Speed</span>
+      <span class="card-val" id="val-speed">1.0</span>
+      <button class="rst" data-key="speed">↺</button>
+    </div>
+    <div class="trk" id="trk-speed">
+      <div class="trk-bg"></div>
+      <div class="trk-fill" id="fill-speed"></div>
+      <div class="trk-knob" id="knob-speed"></div>
+    </div>
+    <div class="trk-lim"><span>0.5</span><span>2.0</span></div>
+  </div>
+
+  <!-- Reverb -->
+  <div class="card">
+    <div class="card-top">
+      <span class="ico ico-reverb">🏛</span>
+      <span class="card-label">Реверберация / Reverb</span>
+      <span class="card-val" id="val-reverb">0</span>
+      <button class="rst" data-key="reverb">↺</button>
+    </div>
+    <div class="trk" id="trk-reverb">
+      <div class="trk-bg"></div>
+      <div class="trk-fill" id="fill-reverb"></div>
+      <div class="trk-knob" id="knob-reverb"></div>
+    </div>
+    <div class="trk-lim"><span>0</span><span>30</span></div>
+  </div>
+
+  <!-- Bass -->
+  <div class="card">
+    <div class="card-top">
+      <span class="ico ico-bass">🎸</span>
+      <span class="card-label">Bass Boost</span>
+      <span class="card-val" id="val-bass">0</span>
+      <button class="rst" data-key="bass">↺</button>
+    </div>
+    <div class="trk" id="trk-bass">
+      <div class="trk-bg"></div>
+      <div class="trk-fill" id="fill-bass"></div>
+      <div class="trk-knob" id="knob-bass"></div>
+    </div>
+    <div class="trk-lim"><span>0</span><span>15</span></div>
+  </div>
 </div>
 
-<div id="dbg"></div>
-
 <script>
-/* ========== DEBUG ========== */
-var dbgEl = document.getElementById('dbg');
-function dbg(s) {
-  // dbgEl.style.display = 'block';
-  // dbgEl.textContent = s;
-  console.log('[FX]', s);
-}
-
 /* ========== TELEGRAM ========== */
 var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 if (tg) {
@@ -174,18 +226,15 @@ if (tg) {
     tg.MainButton.show();
     tg.MainButton.enable();
     tg.MainButton.onClick(function() { doApply(); });
-    dbg('MainButton initialized');
-  } catch(e) {
-    dbg('MainButton error: ' + e.message);
-  }
+  } catch(e) {}
 }
 
 /* ========== CONFIG ========== */
 var SLIDERS = [
-  { key:'pitch',  icon:'🗣', cls:'ico-pitch',  label:'Тон / Pitch',          mn:50, mx:150, step:5, def:100, fmt:function(v){return (v/100).toFixed(2)} },
-  { key:'speed',  icon:'🚀', cls:'ico-speed',  label:'Скорость / Speed',     mn:5,  mx:20,  step:1, def:10,  fmt:function(v){return (v/10).toFixed(1)} },
-  { key:'reverb', icon:'🏛', cls:'ico-reverb', label:'Реверберация / Reverb', mn:0,  mx:30,  step:1, def:0,   fmt:function(v){return String(v)} },
-  { key:'bass',   icon:'🎸', cls:'ico-bass',   label:'Bass Boost',           mn:0,  mx:15,  step:1, def:0,   fmt:function(v){return String(v)} }
+  { key:'pitch',  mn:50, mx:150, step:5, def:100, fmt:function(v){return (v/100).toFixed(2)} },
+  { key:'speed',  mn:5,  mx:20,  step:1, def:10,  fmt:function(v){return (v/10).toFixed(1)} },
+  { key:'reverb', mn:0,  mx:30,  step:1, def:0,   fmt:function(v){return String(v)} },
+  { key:'bass',   mn:0,  mx:15,  step:1, def:0,   fmt:function(v){return String(v)} }
 ];
 
 var PRESETS = {
@@ -196,143 +245,68 @@ var PRESETS = {
   chipmunk:      {pitch:150, speed:10, reverb:0,  bass:0}
 };
 
-var PRESET_LABELS = {
-  slowed_reverb:'🐌 Slowed+Reverb', nightcore:'🌸 Nightcore',
-  bass_boost:'🔊 Bass Boost', '8d':'🎧 8D Audio', chipmunk:'🐿 Chipmunk'
-};
+var val = {};
+var dom = {};
 
-var val = {};   // current values: {pitch:100, speed:10, ...}
-var dom = {};   // DOM refs per key: {pitch: {valEl, fillEl, knobEl, trackEl}, ...}
-
-/* ========== BUILD UI ========== */
-var cardsDiv = document.getElementById('cards');
-var chipsDiv = document.getElementById('chips');
-
-// Build preset chips
-var presetKeys = ['slowed_reverb','nightcore','bass_boost','8d','chipmunk'];
-for (var pi = 0; pi < presetKeys.length; pi++) {
-  var pk = presetKeys[pi];
-  var chipEl = document.createElement('div');
-  chipEl.className = 'chip';
-  chipEl.setAttribute('data-pk', pk);
-  chipEl.textContent = PRESET_LABELS[pk];
-  chipsDiv.appendChild(chipEl);
-  (function(key, el) {
-    el.addEventListener('click', function() {
-      var p = PRESETS[key];
-      for (var k in p) { setVal(k, p[k]); }
-    });
-  })(pk, chipEl);
+/* ========== INIT DOM REFS ========== */
+for (var i = 0; i < SLIDERS.length; i++) {
+  var S = SLIDERS[i];
+  val[S.key] = S.def;
+  dom[S.key] = {
+    valEl:   document.getElementById('val-' + S.key),
+    fillEl:  document.getElementById('fill-' + S.key),
+    knobEl:  document.getElementById('knob-' + S.key),
+    trackEl: document.getElementById('trk-' + S.key)
+  };
 }
 
-// Build slider cards
-for (var si = 0; si < SLIDERS.length; si++) {
-  var S = SLIDERS[si];
-  val[S.key] = S.def;
-
-  var card = document.createElement('div');
-  card.className = 'card';
-
-  // Header row
-  var top = document.createElement('div');
-  top.className = 'card-top';
-
-  var ico = document.createElement('span');
-  ico.className = 'ico ' + S.cls;
-  ico.textContent = S.icon;
-
-  var lbl = document.createElement('span');
-  lbl.className = 'card-label';
-  lbl.textContent = S.label;
-
-  var valSpan = document.createElement('span');
-  valSpan.className = 'card-val';
-  valSpan.textContent = S.fmt(S.def);
-
-  var rstBtn = document.createElement('button');
-  rstBtn.className = 'rst';
-  rstBtn.textContent = '↺';
-
-  top.appendChild(ico);
-  top.appendChild(lbl);
-  top.appendChild(valSpan);
-  top.appendChild(rstBtn);
-
-  // Track
-  var track = document.createElement('div');
-  track.className = 'trk';
-
-  var bg = document.createElement('div');
-  bg.className = 'trk-bg';
-
-  var fill = document.createElement('div');
-  fill.className = 'trk-fill';
-
-  var knob = document.createElement('div');
-  knob.className = 'trk-knob';
-
-  track.appendChild(bg);
-  track.appendChild(fill);
-  track.appendChild(knob);
-
-  // Limits
-  var lim = document.createElement('div');
-  lim.className = 'trk-lim';
-  var limL = document.createElement('span');
-  limL.textContent = S.fmt(S.mn);
-  var limR = document.createElement('span');
-  limR.textContent = S.fmt(S.mx);
-  lim.appendChild(limL);
-  lim.appendChild(limR);
-
-  card.appendChild(top);
-  card.appendChild(track);
-  card.appendChild(lim);
-  cardsDiv.appendChild(card);
-
-  // Store direct DOM references
-  dom[S.key] = { valEl: valSpan, fillEl: fill, knobEl: knob, trackEl: track };
-
-  // Reset handler
-  (function(key) {
-    rstBtn.addEventListener('click', function() {
-      var cfg = getCfg(key);
-      setVal(key, cfg.def);
+/* ========== PRESET CHIPS ========== */
+var chips = document.querySelectorAll('.chip');
+for (var ci = 0; ci < chips.length; ci++) {
+  (function(el) {
+    el.addEventListener('click', function() {
+      var pk = el.getAttribute('data-pk');
+      var p = PRESETS[pk];
+      if (p) { for (var k in p) { setVal(k, p[k]); } }
     });
-  })(S.key);
+  })(chips[ci]);
+}
 
-  // Bind touch/mouse directly on this track
-  (function(key, trackEl, knobEl) {
+/* ========== RESET BUTTONS ========== */
+var rstBtns = document.querySelectorAll('.rst');
+for (var ri = 0; ri < rstBtns.length; ri++) {
+  (function(btn) {
+    btn.addEventListener('click', function() {
+      var key = btn.getAttribute('data-key');
+      var cfg = getCfg(key);
+      if (cfg) setVal(key, cfg.def);
+    });
+  })(rstBtns[ri]);
+}
+
+/* ========== TOUCH/MOUSE BINDINGS ========== */
+for (var ti = 0; ti < SLIDERS.length; ti++) {
+  (function(key) {
+    var trackEl = dom[key].trackEl;
+    var knobEl = dom[key].knobEl;
+
     trackEl.addEventListener('touchstart', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       knobEl.classList.add('big');
-      var touch = e.touches[0];
-      moveSlider(key, touch.clientX, trackEl);
-      dbg(key + ' touch start');
+      moveSlider(key, e.touches[0].clientX, trackEl);
     }, {passive: false});
 
     trackEl.addEventListener('touchmove', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      var touch = e.touches[0];
-      moveSlider(key, touch.clientX, trackEl);
+      e.preventDefault(); e.stopPropagation();
+      moveSlider(key, e.touches[0].clientX, trackEl);
     }, {passive: false});
 
-    trackEl.addEventListener('touchend', function(e) {
-      knobEl.classList.remove('big');
-      dbg(key + ' = ' + val[key]);
-    });
+    trackEl.addEventListener('touchend', function() { knobEl.classList.remove('big'); });
+    trackEl.addEventListener('touchcancel', function() { knobEl.classList.remove('big'); });
 
-    trackEl.addEventListener('touchcancel', function() {
-      knobEl.classList.remove('big');
-    });
-
-    // Mouse (desktop)
     var mouseDown = false;
     trackEl.addEventListener('mousedown', function(e) {
-      e.preventDefault();
-      mouseDown = true;
+      e.preventDefault(); mouseDown = true;
       knobEl.classList.add('big');
       moveSlider(key, e.clientX, trackEl);
     });
@@ -341,12 +315,9 @@ for (var si = 0; si < SLIDERS.length; si++) {
       moveSlider(key, e.clientX, trackEl);
     });
     document.addEventListener('mouseup', function() {
-      if (mouseDown) {
-        mouseDown = false;
-        knobEl.classList.remove('big');
-      }
+      if (mouseDown) { mouseDown = false; knobEl.classList.remove('big'); }
     });
-  })(S.key, track, knob);
+  })(SLIDERS[ti].key);
 }
 
 /* ========== SLIDER LOGIC ========== */
@@ -359,24 +330,20 @@ function getCfg(key) {
 
 function moveSlider(key, clientX, trackEl) {
   var rect = trackEl.getBoundingClientRect();
-  var pct = (clientX - rect.left) / rect.width;
-  pct = Math.max(0, Math.min(1, pct));
+  var pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
   var cfg = getCfg(key);
   var raw = cfg.mn + pct * (cfg.mx - cfg.mn);
   var snapped = Math.round(raw / cfg.step) * cfg.step;
-  snapped = Math.max(cfg.mn, Math.min(cfg.mx, snapped));
-  setVal(key, snapped);
+  setVal(key, Math.max(cfg.mn, Math.min(cfg.mx, snapped)));
 }
 
 function setVal(key, v) {
   var cfg = getCfg(key);
-  v = Math.max(cfg.mn, Math.min(cfg.mx, v));
-  v = Math.round(v / cfg.step) * cfg.step;
+  v = Math.max(cfg.mn, Math.min(cfg.mx, Math.round(v / cfg.step) * cfg.step));
   val[key] = v;
 
   var pct = (v - cfg.mn) / (cfg.mx - cfg.mn) * 100;
   var d = dom[key];
-
   d.fillEl.style.width = pct + '%';
   d.knobEl.style.left = pct + '%';
   d.valEl.textContent = cfg.fmt(v);
@@ -388,17 +355,13 @@ function setVal(key, v) {
 
 /* ========== PRESETS HIGHLIGHT ========== */
 function hiliteChips() {
-  var all = chipsDiv.querySelectorAll('.chip');
-  for (var i = 0; i < all.length; i++) {
-    var pk = all[i].getAttribute('data-pk');
+  for (var i = 0; i < chips.length; i++) {
+    var pk = chips[i].getAttribute('data-pk');
     var p = PRESETS[pk];
     if (!p) continue;
     var ok = true;
-    for (var k in p) {
-      if (Math.abs(val[k] - p[k]) > 1) { ok = false; break; }
-    }
-    if (ok) all[i].classList.add('on');
-    else all[i].classList.remove('on');
+    for (var k in p) { if (Math.abs(val[k] - p[k]) > 1) { ok = false; break; } }
+    chips[i].classList.toggle('on', ok);
   }
 }
 
@@ -412,19 +375,14 @@ function isDefault() {
 
 function updateBtn() {
   if (!tg) return;
-  try {
-    tg.MainButton.color = isDefault() ? '#3a3a4e' : '#7c5cfc';
-  } catch(e) {}
+  try { tg.MainButton.color = isDefault() ? '#3a3a4e' : '#7c5cfc'; } catch(e) {}
 }
 
 function doApply() {
-  dbg('doApply called, isDefault=' + isDefault());
   if (isDefault()) {
-    if (tg) {
-      try { tg.showAlert('Измените хотя бы один параметр'); } catch(e) { alert('Измените хотя бы один параметр'); }
-    } else {
-      alert('Измените хотя бы один параметр');
-    }
+    var msg = 'Измените хотя бы один параметр';
+    if (tg) { try { tg.showAlert(msg); } catch(e) { alert(msg); } }
+    else { alert(msg); }
     return;
   }
 
@@ -435,17 +393,10 @@ function doApply() {
     bass: val.bass
   });
 
-  dbg('sendData: ' + data);
-
   if (tg) {
-    try {
-      tg.sendData(data);
-    } catch(e) {
-      dbg('sendData error: ' + e.message);
-      alert('Ошибка: ' + e.message);
-    }
+    try { tg.sendData(data); } catch(e) { alert('Ошибка: ' + e.message); }
   } else {
-    alert('Данные (не в Telegram): ' + data);
+    alert('Данные: ' + data);
   }
 }
 
@@ -511,10 +462,7 @@ function drawWave() {
 /* ========== INIT ========== */
 window.addEventListener('resize', initWave);
 initWave();
-for (var i = 0; i < SLIDERS.length; i++) {
-  setVal(SLIDERS[i].key, SLIDERS[i].def);
-}
-dbg('init done, tg=' + (tg ? 'yes' : 'no'));
+for (var i = 0; i < SLIDERS.length; i++) { setVal(SLIDERS[i].key, SLIDERS[i].def); }
 </script>
 </body>
 </html>
