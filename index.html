@@ -1,468 +1,483 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Audio FX Editor</title>
+<title>SCevilBOT Studio</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
 
-  :root {
-    --bg: #0a0a0f;
-    --surface: #14141f;
-    --surface2: #1e1e2e;
-    --accent: #7c5cfc;
-    --accent-glow: rgba(124, 92, 252, 0.3);
-    --text: #e8e6f0;
-    --text-dim: #7a7890;
-    --border: #2a2a3e;
-    --track-bg: #2a2a3e;
-  }
+:root {
+  --bg: #050508;
+  --bg2: #0a0a10;
+  --bg3: #111118;
+  --card: rgba(12,12,20,0.85);
+  --border: rgba(255,255,255,0.06);
+  --border-glow: rgba(140,80,255,0.15);
+  --text: #d0d0e0;
+  --text2: #5a5a78;
+  --accent: #8b5cf6;
+  --accent2: #c084fc;
+  --neon: #a78bfa;
+  --neon-glow: 0 0 8px rgba(167,139,250,0.4), 0 0 20px rgba(139,92,246,0.15);
+  --red: #ef4444;
+  --green: #22c55e;
+  --radius: 12px;
+}
 
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { height:100%; overflow-x:hidden; }
 
-  body {
-    font-family: 'Outfit', sans-serif;
-    background: var(--bg); color: var(--text);
-    min-height: 100vh; overflow-x: hidden;
-    padding: 0 16px 40px;
-    -webkit-user-select: none; user-select: none;
-  }
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
 
-  body::before {
-    content: ''; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
-    background: radial-gradient(ellipse at 30% 20%, rgba(124,92,252,0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 80%, rgba(252,92,140,0.05) 0%, transparent 50%);
-    pointer-events: none; z-index: 0;
-  }
+/* === NOISE + SCANLINES OVERLAY === */
+body::before {
+  content: '';
+  position: fixed; top:0; left:0; width:100%; height:100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255,255,255,0.008) 2px,
+    rgba(255,255,255,0.008) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+body::after {
+  content: '';
+  position: fixed; top:0; left:0; width:100%; height:100%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.06) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 100%, rgba(192,132,252,0.04) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+}
 
-  .wrap { position: relative; z-index: 1; max-width: 420px; margin: 0 auto; }
+.screen { display:none; min-height:100vh; padding:16px; padding-bottom:100px; animation:screenIn .3s ease; position:relative; z-index:2; }
+.screen.active { display:block; }
+@keyframes screenIn { 
+  0% { opacity:0; transform:translateY(4px); }
+  30% { opacity:1; transform:translateX(2px); }
+  60% { transform:translateX(-1px); }
+  100% { transform:translateX(0); }
+}
 
-  .header { text-align: center; padding: 20px 0 12px; }
-  .header h1 {
-    font-size: 22px; font-weight: 700;
-    background: linear-gradient(135deg, #e8e6f0 30%, #a855f7);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  }
-  .header p { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+/* === HEADER === */
+.header { text-align:center; padding:20px 0 24px; position:relative; }
+.header h1 {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--neon);
+  text-shadow: var(--neon-glow);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  position: relative;
+}
+.header h1::after {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  margin: 10px auto 0;
+}
+.header p { color:var(--text2); font-size:12px; margin-top:6px; letter-spacing:1px; text-transform:uppercase; }
 
-  .wave-box {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; padding: 16px; margin-bottom: 16px;
-    position: relative; overflow: hidden;
-  }
-  .wave-box::after {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(90deg, transparent 49.5%, var(--accent) 49.5%, var(--accent) 50.5%, transparent 50.5%);
-    opacity: 0.5; pointer-events: none;
-  }
-  #waveCanvas { width: 100%; height: 70px; display: block; border-radius: 8px; }
+/* === MENU === */
+.menu-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+.menu-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 12px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.menu-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--neon), transparent);
+  transition: left 0.4s;
+}
+.menu-card:active { transform:scale(0.96); border-color:var(--border-glow); }
+.menu-card:active::before { left: 100%; }
+.menu-card .icon { font-size:26px; margin-bottom:8px; filter:grayscale(0.3); }
+.menu-card .title { font-family:'Share Tech Mono',monospace; font-weight:400; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:var(--text); }
+.menu-card .desc { color:var(--text2); font-size:11px; margin-top:4px; line-height:1.3; }
 
-  .chips {
-    display: flex; gap: 8px; overflow-x: auto; padding: 0 0 14px;
-    scrollbar-width: none;
-  }
-  .chips::-webkit-scrollbar { display: none; }
-  .chip {
-    flex-shrink: 0; padding: 8px 14px; border-radius: 20px;
-    border: 1px solid var(--border); background: var(--surface);
-    color: var(--text-dim); font-size: 13px; font-weight: 500;
-    white-space: nowrap; cursor: pointer; transition: all 0.2s;
-  }
-  .chip.on {
-    border-color: var(--accent); color: var(--text);
-    background: var(--surface2); box-shadow: 0 0 12px var(--accent-glow);
-  }
+.back-btn { 
+  display:inline-flex; align-items:center; gap:4px;
+  font-family:'Share Tech Mono',monospace; color:var(--text2); font-size:12px;
+  letter-spacing:1px; text-transform:uppercase;
+  cursor:pointer; padding:8px 0; margin-bottom:4px;
+  transition: color 0.2s;
+}
+.back-btn:active { color:var(--neon); }
 
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; padding: 14px 16px; margin-bottom: 10px;
-  }
-  .card-top { display: flex; align-items: center; margin-bottom: 12px; gap: 10px; }
-  .ico {
-    width: 28px; height: 28px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0;
-  }
-  .ico-pitch  { background: rgba(124,92,252,0.15); }
-  .ico-speed  { background: rgba(252,165,92,0.15); }
-  .ico-reverb { background: rgba(92,200,252,0.15); }
-  .ico-bass   { background: rgba(252,92,140,0.15); }
-  .card-label { font-size: 14px; font-weight: 500; flex-grow: 1; }
-  .card-val {
-    font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600;
-    color: var(--accent); min-width: 45px; text-align: right;
-  }
-  .rst {
-    padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border);
-    background: transparent; color: var(--text-dim); font-size: 13px;
-    cursor: pointer; flex-shrink: 0;
-  }
+.section-title {
+  font-family:'Share Tech Mono',monospace;
+  font-size:10px; color:var(--text2); text-transform:uppercase;
+  letter-spacing:2px; margin:20px 0 10px;
+  padding-left:2px;
+  position:relative;
+}
+.section-title::before { content:'// '; color:var(--accent); }
 
-  .trk {
-    position: relative; height: 44px; touch-action: none; cursor: pointer;
-  }
-  .trk-bg {
-    position: absolute; left: 0; right: 0; height: 6px;
-    background: var(--track-bg); border-radius: 3px; top: 50%; transform: translateY(-50%);
-  }
-  .trk-fill {
-    position: absolute; left: 0; height: 6px;
-    background: linear-gradient(90deg, #7c5cfc, #a855f7);
-    border-radius: 3px; top: 50%; transform: translateY(-50%); width: 0;
-    pointer-events: none;
-  }
-  .trk-knob {
-    position: absolute; width: 24px; height: 24px; border-radius: 50%;
-    background: var(--accent); border: 2px solid #fff;
-    box-shadow: 0 0 10px var(--accent-glow), 0 2px 8px rgba(0,0,0,0.3);
-    top: 50%; transform: translate(-50%, -50%); z-index: 5;
-    pointer-events: none; transition: transform 0.1s;
-  }
-  .trk-knob.big { transform: translate(-50%, -50%) scale(1.25); }
+/* === SLIDERS === */
+.slider-group { margin-bottom:14px; }
+.slider-label { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.slider-label span { font-size:13px; font-weight:500; }
+.slider-label .val {
+  font-family:'Share Tech Mono',monospace; font-size:12px;
+  color:var(--neon); text-shadow:0 0 6px rgba(167,139,250,0.3);
+  min-width:36px; text-align:right;
+}
+input[type="range"] {
+  -webkit-appearance:none; width:100%; height:4px;
+  border-radius:2px; background:var(--bg3); outline:none;
+  border:1px solid var(--border);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:16px; height:16px;
+  border-radius:3px; /* square-ish thumb */
+  background:var(--accent);
+  cursor:pointer;
+  box-shadow: 0 0 8px rgba(139,92,246,0.5);
+  border: 1px solid var(--accent2);
+}
 
-  .trk-lim {
-    display: flex; justify-content: space-between;
-    font-size: 11px; color: var(--text-dim);
-    font-family: 'JetBrains Mono', monospace; margin-top: 2px;
-  }
+/* === BUTTONS === */
+.btn {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  width:100%; padding:12px;
+  border:none; border-radius:var(--radius);
+  font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:600;
+  cursor:pointer; transition:all .15s;
+  letter-spacing:0.5px; text-transform:uppercase;
+}
+.btn:active { transform:scale(0.97); }
+.btn-primary {
+  background:var(--accent);
+  color:white;
+  box-shadow: 0 0 12px rgba(139,92,246,0.3);
+  border: 1px solid var(--accent2);
+}
+.btn-secondary {
+  background:transparent; color:var(--text2);
+  border:1px solid var(--border);
+}
+.btn-secondary:active { border-color:var(--accent); color:var(--text); }
+.btn-row { display:flex; gap:8px; margin-top:8px; }
+.btn-row .btn { flex:1; }
+
+/* === CHIPS === */
+.chips { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+.chip {
+  padding:6px 12px; border-radius:4px;
+  background:transparent;
+  border:1px solid var(--border);
+  font-family:'Share Tech Mono',monospace;
+  font-size:11px; letter-spacing:0.5px;
+  cursor:pointer; transition:all .15s;
+  white-space:nowrap; color:var(--text2);
+}
+.chip:active, .chip.active {
+  background:rgba(139,92,246,0.15);
+  border-color:var(--accent);
+  color:var(--neon);
+  text-shadow:0 0 4px rgba(167,139,250,0.3);
+}
+
+/* === CARD === */
+.card {
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:14px;
+  margin-bottom:10px;
+  position:relative;
+}
+
+/* === URL INPUT === */
+.url-input-wrap { position:relative; margin-bottom:12px; }
+.url-input {
+  width:100%; padding:12px 44px 12px 14px;
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); color:var(--text);
+  font-family:'Share Tech Mono',monospace; font-size:13px;
+  outline:none; transition:border-color .2s;
+}
+.url-input:focus { border-color:var(--accent); box-shadow:0 0 8px rgba(139,92,246,0.1); }
+.url-input::placeholder { color:var(--text2); }
+.url-paste-btn {
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  background:var(--accent); border:none; color:white;
+  width:30px; height:30px; border-radius:6px;
+  font-size:14px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 8px rgba(139,92,246,0.3);
+}
+
+/* === TIMELINE === */
+.timeline-wrap { background:var(--bg2); border-radius:8px; padding:14px; margin:12px 0; border:1px solid var(--border); }
+.timeline { position:relative; height:40px; background:var(--bg); border-radius:4px; overflow:hidden; margin:8px 0; border:1px solid var(--border); }
+.timeline-fill { position:absolute; top:0;bottom:0; background:rgba(139,92,246,0.12); border-left:2px solid var(--accent); border-right:2px solid var(--accent2); }
+.timeline-bar { position:absolute; top:0; width:100%; height:100%; display:flex; align-items:center; }
+.timeline-bar span { display:block; width:1.5px; margin:0 1px; background:var(--accent); border-radius:1px; opacity:0.25; }
+.time-display { display:flex; justify-content:space-between; font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--neon); }
+.time-input { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px 10px; color:var(--neon); font-family:'Share Tech Mono',monospace; font-size:12px; width:70px; text-align:center; }
+
+/* === FORMAT GRID === */
+.format-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:10px 0; }
+.format-btn {
+  padding:14px 8px; border-radius:var(--radius);
+  background:var(--card); border:1px solid var(--border);
+  text-align:center; cursor:pointer; transition:all .15s;
+}
+.format-btn.active { border-color:var(--accent); box-shadow:0 0 8px rgba(139,92,246,0.15); }
+.format-btn:active { transform:scale(0.96); }
+.format-btn .fmt-icon { font-size:22px; }
+.format-btn .fmt-label { font-family:'Share Tech Mono',monospace; font-size:10px; margin-top:6px; letter-spacing:1px; text-transform:uppercase; color:var(--text2); }
+
+/* === EQ === */
+.eq-wrap { display:flex; align-items:flex-end; justify-content:space-around; height:130px; padding:12px 0; }
+.eq-band { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
+.eq-band input[type="range"] { -webkit-appearance:none; writing-mode:vertical-lr; direction:rtl; width:4px; height:80px; background:var(--bg); border-radius:2px; }
+.eq-band input[type="range"]::-webkit-slider-thumb { width:14px; height:14px; border-radius:3px; }
+.eq-band .freq { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--text2); letter-spacing:0.5px; }
+.eq-band .db { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--neon); min-height:14px; }
+
+.hint { color:var(--text2); font-size:11px; line-height:1.5; margin-top:8px; font-style:italic; }
+.toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--card); border:1px solid var(--accent); padding:8px 18px; border-radius:8px; font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--neon); opacity:0; transition:all .3s; z-index:100; pointer-events:none; text-shadow:var(--neon-glow); }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.bottom-spacer { height:80px; }
+
+/* Glitch effect on title hover */
+@keyframes glitch {
+  0% { text-shadow: var(--neon-glow); }
+  20% { text-shadow: -2px 0 #ef4444, 2px 0 #3b82f6, var(--neon-glow); }
+  40% { text-shadow: var(--neon-glow); }
+  60% { text-shadow: 1px 0 #ef4444, -1px 0 #22c55e, var(--neon-glow); }
+  100% { text-shadow: var(--neon-glow); }
+}
+.header h1.glitch { animation: glitch 0.3s ease; }
 </style>
 </head>
 <body>
 
-<div class="wrap">
-  <div class="header">
-    <h1>🎛 Audio FX Editor</h1>
-    <p>Настрой звучание и отправь в чат</p>
-  </div>
-
-  <div class="wave-box">
-    <canvas id="waveCanvas"></canvas>
-  </div>
-
-  <div class="chips">
-    <div class="chip" data-pk="slowed_reverb">🐌 Slowed+Reverb</div>
-    <div class="chip" data-pk="nightcore">🌸 Nightcore</div>
-    <div class="chip" data-pk="bass_boost">🔊 Bass Boost</div>
-    <div class="chip" data-pk="8d">🎧 8D Audio</div>
-    <div class="chip" data-pk="chipmunk">🐿 Chipmunk</div>
-  </div>
-
-  <!-- Pitch -->
-  <div class="card">
-    <div class="card-top">
-      <span class="ico ico-pitch">🗣</span>
-      <span class="card-label">Тон / Pitch</span>
-      <span class="card-val" id="val-pitch">1.00</span>
-      <button class="rst" data-key="pitch">↺</button>
-    </div>
-    <div class="trk" id="trk-pitch">
-      <div class="trk-bg"></div>
-      <div class="trk-fill" id="fill-pitch"></div>
-      <div class="trk-knob" id="knob-pitch"></div>
-    </div>
-    <div class="trk-lim"><span>0.50</span><span>1.50</span></div>
-  </div>
-
-  <!-- Speed -->
-  <div class="card">
-    <div class="card-top">
-      <span class="ico ico-speed">🚀</span>
-      <span class="card-label">Скорость / Speed</span>
-      <span class="card-val" id="val-speed">1.0</span>
-      <button class="rst" data-key="speed">↺</button>
-    </div>
-    <div class="trk" id="trk-speed">
-      <div class="trk-bg"></div>
-      <div class="trk-fill" id="fill-speed"></div>
-      <div class="trk-knob" id="knob-speed"></div>
-    </div>
-    <div class="trk-lim"><span>0.5</span><span>2.0</span></div>
-  </div>
-
-  <!-- Reverb -->
-  <div class="card">
-    <div class="card-top">
-      <span class="ico ico-reverb">🏛</span>
-      <span class="card-label">Реверберация / Reverb</span>
-      <span class="card-val" id="val-reverb">0</span>
-      <button class="rst" data-key="reverb">↺</button>
-    </div>
-    <div class="trk" id="trk-reverb">
-      <div class="trk-bg"></div>
-      <div class="trk-fill" id="fill-reverb"></div>
-      <div class="trk-knob" id="knob-reverb"></div>
-    </div>
-    <div class="trk-lim"><span>0</span><span>30</span></div>
-  </div>
-
-  <!-- Bass -->
-  <div class="card">
-    <div class="card-top">
-      <span class="ico ico-bass">🎸</span>
-      <span class="card-label">Bass Boost</span>
-      <span class="card-val" id="val-bass">0</span>
-      <button class="rst" data-key="bass">↺</button>
-    </div>
-    <div class="trk" id="trk-bass">
-      <div class="trk-bg"></div>
-      <div class="trk-fill" id="fill-bass"></div>
-      <div class="trk-knob" id="knob-bass"></div>
-    </div>
-    <div class="trk-lim"><span>0</span><span>15</span></div>
+<div id="screen-menu" class="screen active">
+  <div class="header"><h1 id="main-title">SCevilBOT</h1><p>studio</p></div>
+  <div class="menu-grid">
+    <div class="menu-card" onclick="go('download')"><div class="icon">⬇️</div><div class="title">Download</div><div class="desc">Вставь ссылку</div></div>
+    <div class="menu-card" onclick="go('audio')"><div class="icon">🎵</div><div class="title">Audio FX</div><div class="desc">Питч · реверб · бас</div></div>
+    <div class="menu-card" onclick="go('photo')"><div class="icon">🖼</div><div class="title">Photo</div><div class="desc">Фильтры · настройки</div></div>
+    <div class="menu-card" onclick="go('video')"><div class="icon">✂️</div><div class="title">Trim</div><div class="desc">Визуальная обрезка</div></div>
+    <div class="menu-card" onclick="go('eq')"><div class="icon">🎚</div><div class="title">EQ</div><div class="desc">5-полосный</div></div>
+    <div class="menu-card" onclick="go('ringtone')"><div class="icon">📱</div><div class="title">Ringtone</div><div class="desc">Обрезка + fade</div></div>
+    <div class="menu-card" onclick="go('speed')"><div class="icon">⚡</div><div class="title">Speed</div><div class="desc">Точный темп</div></div>
+    <div class="menu-card" onclick="go('mashup')"><div class="icon">🎶</div><div class="title">Mashup</div><div class="desc">Crossfade</div></div>
   </div>
 </div>
 
+<div id="screen-download" class="screen">
+  <div class="back-btn" onclick="go('menu')">‹ back</div>
+  <div class="header"><h1>Download</h1><p>paste link</p></div>
+  <div class="url-input-wrap"><input type="text" id="dl-url" class="url-input" placeholder="https://..." autocomplete="off"><button class="url-paste-btn" onclick="pasteURL()">📋</button></div>
+  <div class="section-title">format</div>
+  <div class="format-grid">
+    <div class="format-btn active" onclick="selFmt(this,'video')"><div class="fmt-icon">🎞</div><div class="fmt-label">Video</div></div>
+    <div class="format-btn" onclick="selFmt(this,'audio')"><div class="fmt-icon">🎵</div><div class="fmt-label">Audio</div></div>
+    <div class="format-btn" onclick="selFmt(this,'gif')"><div class="fmt-icon">🎬</div><div class="fmt-label">GIF</div></div>
+  </div>
+  <div class="section-title">trim (optional)</div>
+  <div class="card"><div style="display:flex;gap:10px;align-items:center"><div style="flex:1"><div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-family:'Share Tech Mono',monospace">START</div><input type="text" id="dl-ts" class="time-input" placeholder="0:00" style="width:100%"></div><div style="color:var(--text2);padding-top:16px;font-family:'Share Tech Mono',monospace">→</div><div style="flex:1"><div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-family:'Share Tech Mono',monospace">END</div><input type="text" id="dl-te" class="time-input" placeholder="--:--" style="width:100%"></div></div></div>
+  <button class="btn btn-primary" onclick="sendDL()">⬇ Download</button>
+</div>
+
+<div id="screen-audio" class="screen">
+  <div class="back-btn" onclick="go('menu')">‹ back</div>
+  <div class="header"><h1>Audio FX</h1><p>send audio first</p></div>
+  <div class="section-title">presets</div>
+  <div class="chips">
+    <div class="chip" onclick="aP('nightcore')">nightcore</div><div class="chip" onclick="aP('slowed')">slowed</div>
+    <div class="chip" onclick="aP('bass')">bass+</div><div class="chip" onclick="aP('reverb')">reverb</div>
+    <div class="chip" onclick="aP('8d')">8D</div><div class="chip" onclick="aP('chipmunk')">chipmunk</div>
+  </div>
+  <div class="card">
+    <div class="slider-group"><div class="slider-label"><span>Pitch</span><span class="val" id="v-pitch">1.00</span></div><input type="range" id="s-pitch" min="50" max="150" value="100" oninput="uA()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Speed</span><span class="val" id="v-speed">1.0</span></div><input type="range" id="s-speed" min="5" max="20" value="10" oninput="uA()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Reverb</span><span class="val" id="v-reverb">0</span></div><input type="range" id="s-reverb" min="0" max="30" value="0" oninput="uA()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Bass</span><span class="val" id="v-bass">0</span></div><input type="range" id="s-bass" min="0" max="15" value="0" oninput="uA()"></div>
+  </div>
+  <button class="btn btn-primary" onclick="sendA()">Apply</button>
+  <div class="btn-row"><button class="btn btn-secondary" onclick="rA()">Reset</button><button class="btn btn-secondary" onclick="sendA(1)">Save</button></div>
+</div>
+
+<div id="screen-eq" class="screen">
+  <div class="back-btn" onclick="go('menu')">‹ back</div>
+  <div class="header"><h1>Equalizer</h1><p>5-band graphic eq</p></div>
+  <div class="section-title">presets</div>
+  <div class="chips">
+    <div class="chip" onclick="eqP('flat')">flat</div><div class="chip" onclick="eqP('bass_heavy')">bass</div>
+    <div class="chip" onclick="eqP('vocal')">vocal</div><div class="chip" onclick="eqP('treble')">treble</div>
+    <div class="chip" onclick="eqP('scoop')">v-shape</div>
+  </div>
+  <div class="card">
+    <div class="eq-wrap">
+      <div class="eq-band"><div class="db" id="eq-db-0">0</div><input type="range" id="eq-0" min="-12" max="12" value="0" oninput="uEQ()"><div class="freq">60Hz</div></div>
+      <div class="eq-band"><div class="db" id="eq-db-1">0</div><input type="range" id="eq-1" min="-12" max="12" value="0" oninput="uEQ()"><div class="freq">230</div></div>
+      <div class="eq-band"><div class="db" id="eq-db-2">0</div><input type="range" id="eq-2" min="-12" max="12" value="0" oninput="uEQ()"><div class="freq">1k</div></div>
+      <div class="eq-band"><div class="db" id="eq-db-3">0</div><input type="range" id="eq-3" min="-12" max="12" value="0" oninput="uEQ()"><div class="freq">3.5k</div></div>
+      <div class="eq-band"><div class="db" id="eq-db-4">0</div><input type="range" id="eq-4" min="-12" max="12" value="0" oninput="uEQ()"><div class="freq">12k</div></div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="sendEQ()">Apply</button>
+  <button class="btn btn-secondary" style="margin-top:8px" onclick="eqP('flat')">Reset</button>
+</div>
+
+<div id="screen-ringtone" class="screen">
+  <div class="back-btn" onclick="go('menu')">‹ back</div>
+  <div class="header"><h1>Ringtone</h1><p>create from track</p></div>
+  <div class="card">
+    <div class="slider-group"><div class="slider-label"><span>Start (sec)</span><span class="val" id="v-rs">0</span></div><input type="range" id="s-rs" min="0" max="300" value="0" oninput="uRT()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Duration</span><span class="val" id="v-rd">30</span></div><input type="range" id="s-rd" min="5" max="40" value="30" oninput="uRT()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Fade In</span><span class="val" id="v-fi">1</span></div><input type="range" id="s-fi" min="0" max="5" value="1" oninput="uRT()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Fade Out</span><span class="val" id="v-fo">2</span></div><input type="range" id="s-fo" min="0" max="5" value="2" oninput="uRT()"></div>
+  </div>
+  <div class="section-title">format</div>
+  <div class="chips"><div class="chip active" onclick="rtF(this,'mp3')">MP3</div><div class="chip" onclick="rtF(this,'m4r')">M4R (iPhone)</div></div>
+  <button class="btn btn-primary" onclick="sendRT()">Create Ringtone</button>
+</div>
+
+<div id="screen-speed" class="screen">
+  <div class="back-btn" onclick="go('menu')">‹ back</div>
+  <div class="header"><h1>Speed</h1><p>tempo control</p></div>
+  <div class="chips">
+    <div class="chip" onclick="setSp(.5)">0.5x</div><div class="chip" onclick="setSp(.75)">0.75x</div><div class="chip" onclick="setSp(.85)">0.85x</div>
+    <div class="chip active" onclick="setSp(1)">1.0x</div><div class="chip" onclick="setSp(1.25)">1.25x</div><div class="chip" onclick="setSp(1.5)">1.5x</div><div class="chip" onclick="setSp(2)">2.0x</div>
+  </div>
+  <div class="card">
+    <div class="slider-group"><div class="slider-label"><span>Exact Speed</span><span class="val" id="v-sp">1.00x</span></div><input type="range" id="s-sp" min="25" max="300" value="100" oninput="uSp()"></div>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px"><input type="checkbox" id="sp-kp" checked style="width:16px;height:16px;accent-color:var(--accent)"><span style="font-size:12px;color:var(--text2)">Keep pitch</span></label>
+  </div>
+  <button class="btn btn-primary" onclick="sendSp()">Apply</button>
+</div>
+
+<div id="screen-photo" class="screen">
+  <div class="back-btn" onclick="go('menu')">‹ back</div>
+  <div class="header"><h1>Photo FX</h1><p>send photo first</p></div>
+  <div class="section-title">filters</div>
+  <div class="chips">
+    <div class="chip" onclick="pP('bw')">B&W</div><div class="chip" onclick="pP('sepia')">sepia</div><div class="chip" onclick="pP('vivid')">vivid</div>
+    <div class="chip" onclick="pP('cold')">cold</div><div class="chip" onclick="pP('warm')">warm</div>
+    <div class="chip" onclick="pP('vintage')">vintage</div><div class="chip" onclick="pP('dramatic')">drama</div>
+  </div>
+  <div class="card">
+    <div class="slider-group"><div class="slider-label"><span>Brightness</span><span class="val" id="v-br">0</span></div><input type="range" id="s-br" min="-100" max="100" value="0" oninput="uP()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Contrast</span><span class="val" id="v-ct">0</span></div><input type="range" id="s-ct" min="-100" max="100" value="0" oninput="uP()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Saturation</span><span class="val" id="v-sa">0</span></div><input type="range" id="s-sa" min="-100" max="100" value="0" oninput="uP()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Temperature</span><span class="val" id="v-tm">0</span></div><input type="range" id="s-tm" min="-100" max="100" value="0" oninput="uP()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Blur</span><span class="val" id="v-bl">0</span></div><input type="range" id="s-bl" min="0" max="20" value="0" oninput="uP()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Vignette</span><span class="val" id="v-vn">0</span></div><input type="range" id="s-vn" min="0" max="100" value="0" oninput="uP()"></div>
+    <div class="slider-group"><div class="slider-label"><span>Sharpen</span><span class="val" id="v-sh">0</span></div><input type="range" id="s-sh" min="0" max="30" value="0" oninput="uP()"></div>
+  </div>
+  <button class="btn btn-primary" onclick="sendP()">Apply</button>
+  <button class="btn btn-secondary" onclick="rP()" style="margin-top:8px">Reset</button>
+</div>
+
+<div id="screen-video" class="screen">
+  <div class="back-btn" onclick="go('menu')">‹ back</div>
+  <div class="header"><h1>Trim</h1><p>send video first</p></div>
+  <div class="card">
+    <div class="timeline-wrap">
+      <div class="timeline"><div class="timeline-fill" id="tl-fill" style="left:0%;right:0%"></div><div class="timeline-bar" id="tl-bar"></div></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <div style="flex:1"><div style="font-size:10px;color:var(--text2);margin-bottom:4px;font-family:'Share Tech Mono',monospace">START</div><input type="range" id="t-s" min="0" max="1000" value="0" oninput="uTL()"></div>
+        <div style="flex:1"><div style="font-size:10px;color:var(--text2);margin-bottom:4px;font-family:'Share Tech Mono',monospace">END</div><input type="range" id="t-e" min="0" max="1000" value="1000" oninput="uTL()"></div>
+      </div>
+      <div class="time-display" style="margin-top:6px"><span id="tl-st">0:00</span><span style="color:var(--text2)">→</span><span id="tl-et">--:--</span></div>
+    </div>
+    <div style="margin-top:10px"><div style="font-size:10px;color:var(--text2);font-family:'Share Tech Mono',monospace;margin-bottom:4px">DURATION (SEC)</div><input type="number" id="v-dur" class="time-input" value="60" min="1" max="3600" style="width:100%" oninput="uTL()"></div>
+  </div>
+  <button class="btn btn-primary" onclick="sendVT()">✂ Trim</button>
+</div>
+
+<div id="screen-mashup" class="screen">
+  <div class="back-btn" onclick="go('menu')">‹ back</div>
+  <div class="header"><h1>Mashup</h1><p>crossfade settings</p></div>
+  <div class="card">
+    <div class="slider-group"><div class="slider-label"><span>Crossfade (sec)</span><span class="val" id="v-cf">5</span></div><input type="range" id="s-cf" min="1" max="15" value="5" oninput="$('v-cf').textContent=this.value"></div>
+    <div class="section-title" style="margin-top:12px">type</div>
+    <div class="chips"><div class="chip active" onclick="fd(this,'tri')">linear</div><div class="chip" onclick="fd(this,'exp')">expo</div><div class="chip" onclick="fd(this,'log')">log</div></div>
+  </div>
+  <p class="hint">Send audio → tap Mashup on each → Create</p>
+  <button class="btn btn-primary" style="margin-top:12px" onclick="sendM()">Save Settings</button>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="bottom-spacer"></div>
+
 <script>
-/* ========== TELEGRAM ========== */
-var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-if (tg) {
-  tg.expand();
-  tg.ready();
-  try {
-    tg.MainButton.setText('✨ Применить эффекты');
-    tg.MainButton.color = '#7c5cfc';
-    tg.MainButton.textColor = '#ffffff';
-    tg.MainButton.show();
-    tg.MainButton.enable();
-    tg.MainButton.onClick(function() { doApply(); });
-  } catch(e) {}
-}
+const tg=window.Telegram.WebApp;tg.ready();tg.expand();
+let selF='video',fadeT='tri',rtFmt='mp3';
+const $=id=>document.getElementById(id);
 
-/* ========== CONFIG ========== */
-var SLIDERS = [
-  { key:'pitch',  mn:50, mx:150, step:5, def:100, fmt:function(v){return (v/100).toFixed(2)} },
-  { key:'speed',  mn:5,  mx:20,  step:1, def:10,  fmt:function(v){return (v/10).toFixed(1)} },
-  { key:'reverb', mn:0,  mx:30,  step:1, def:0,   fmt:function(v){return String(v)} },
-  { key:'bass',   mn:0,  mx:15,  step:1, def:0,   fmt:function(v){return String(v)} }
-];
+// Glitch effect on title
+setInterval(()=>{const t=$('main-title');if(t&&Math.random()<0.1){t.classList.add('glitch');setTimeout(()=>t.classList.remove('glitch'),300);}},2000);
 
-var PRESETS = {
-  slowed_reverb: {pitch:85,  speed:10, reverb:15, bass:0},
-  nightcore:     {pitch:125, speed:10, reverb:0,  bass:0},
-  bass_boost:    {pitch:100, speed:10, reverb:0,  bass:12},
-  '8d':          {pitch:100, speed:10, reverb:10, bass:3},
-  chipmunk:      {pitch:150, speed:10, reverb:0,  bass:0}
-};
+function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$('screen-'+id).classList.add('active');window.scrollTo(0,0);if(id==='video'){genW();uTL();}}
+const par=new URLSearchParams(location.search);const m=par.get('mode');if(m)go(m);
+const dp=par.get('dur');if(dp&&$('v-dur'))$('v-dur').value=parseInt(dp)||60;
 
-var val = {};
-var dom = {};
+async function pasteURL(){try{$('dl-url').value=await navigator.clipboard.readText();toast('pasted')}catch{toast('clipboard denied')}}
+function selFmt(el,f){document.querySelectorAll('.format-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');selF=f;}
+function pT(s){if(!s||!s.trim())return null;const p=s.trim().split(':');return p.length===2?parseInt(p[0])*60+parseInt(p[1]):parseInt(p[0])||null;}
+function sendDL(){const u=$('dl-url').value.trim();if(!u){toast('no url');return;}const d={type:'download',url:u,format:selF};const ts=pT($('dl-ts').value),te=pT($('dl-te').value);if(ts!==null)d.trim_start=ts;if(te!==null)d.trim_end=te;tg.sendData(JSON.stringify(d));tg.close();}
 
-/* ========== INIT DOM REFS ========== */
-for (var i = 0; i < SLIDERS.length; i++) {
-  var S = SLIDERS[i];
-  val[S.key] = S.def;
-  dom[S.key] = {
-    valEl:   document.getElementById('val-' + S.key),
-    fillEl:  document.getElementById('fill-' + S.key),
-    knobEl:  document.getElementById('knob-' + S.key),
-    trackEl: document.getElementById('trk-' + S.key)
-  };
-}
+function uA(){$('v-pitch').textContent=($('s-pitch').value/100).toFixed(2);$('v-speed').textContent=($('s-speed').value/10).toFixed(1);$('v-reverb').textContent=$('s-reverb').value;$('v-bass').textContent=$('s-bass').value;}
+function rA(){[['s-pitch',100],['s-speed',10],['s-reverb',0],['s-bass',0]].forEach(([id,v])=>$(id).value=v);uA();toast('reset');}
+function aP(n){const p={nightcore:[125,12,0,0],slowed:[85,9,10,3],bass:[100,10,0,12],reverb:[100,10,20,0],'8d':[100,10,5,2],chipmunk:[150,10,0,0]}[n];if(!p)return;['s-pitch','s-speed','s-reverb','s-bass'].forEach((id,i)=>$(id).value=p[i]);uA();document.querySelectorAll('#screen-audio .chip').forEach(c=>c.classList.remove('active'));event.target.classList.add('active');}
+function sendA(save){const d={type:'audio_fx',pitch:+($('s-pitch').value/100).toFixed(2),speed:+($('s-speed').value/10).toFixed(1),reverb:+$('s-reverb').value,bass:+$('s-bass').value};if(save)d.save_preset=true;tg.sendData(JSON.stringify(d));tg.close();}
 
-/* ========== PRESET CHIPS ========== */
-var chips = document.querySelectorAll('.chip');
-for (var ci = 0; ci < chips.length; ci++) {
-  (function(el) {
-    el.addEventListener('click', function() {
-      var pk = el.getAttribute('data-pk');
-      var p = PRESETS[pk];
-      if (p) { for (var k in p) { setVal(k, p[k]); } }
-    });
-  })(chips[ci]);
-}
+function uEQ(){for(let i=0;i<5;i++)$('eq-db-'+i).textContent=$('eq-'+i).value+'dB';}
+function eqP(n){const p={flat:[0,0,0,0,0],bass_heavy:[10,6,0,-2,0],vocal:[-2,-1,4,6,2],treble:[0,-2,0,4,8],scoop:[6,-2,-4,-2,6]}[n];if(!p)return;for(let i=0;i<5;i++)$('eq-'+i).value=p[i];uEQ();document.querySelectorAll('#screen-eq .chip').forEach(c=>c.classList.remove('active'));event.target.classList.add('active');}
+function sendEQ(){const b=[],f=[60,230,1000,3500,12000];for(let i=0;i<5;i++)b.push({freq:f[i],gain:+$('eq-'+i).value});tg.sendData(JSON.stringify({type:'eq',bands:b}));tg.close();}
 
-/* ========== RESET BUTTONS ========== */
-var rstBtns = document.querySelectorAll('.rst');
-for (var ri = 0; ri < rstBtns.length; ri++) {
-  (function(btn) {
-    btn.addEventListener('click', function() {
-      var key = btn.getAttribute('data-key');
-      var cfg = getCfg(key);
-      if (cfg) setVal(key, cfg.def);
-    });
-  })(rstBtns[ri]);
-}
+function uRT(){$('v-rs').textContent=$('s-rs').value;$('v-rd').textContent=$('s-rd').value;$('v-fi').textContent=$('s-fi').value;$('v-fo').textContent=$('s-fo').value;}
+function rtF(el,f){rtFmt=f;el.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');}
+function sendRT(){tg.sendData(JSON.stringify({type:'ringtone',start:+$('s-rs').value,duration:+$('s-rd').value,fade_in:+$('s-fi').value,fade_out:+$('s-fo').value,format:rtFmt}));tg.close();}
 
-/* ========== TOUCH/MOUSE BINDINGS ========== */
-for (var ti = 0; ti < SLIDERS.length; ti++) {
-  (function(key) {
-    var trackEl = dom[key].trackEl;
-    var knobEl = dom[key].knobEl;
+function uSp(){$('v-sp').textContent=($('s-sp').value/100).toFixed(2)+'x';}
+function setSp(v){$('s-sp').value=Math.round(v*100);uSp();document.querySelectorAll('#screen-speed .chip').forEach(c=>c.classList.remove('active'));event.target.classList.add('active');}
+function sendSp(){tg.sendData(JSON.stringify({type:'speed',speed:+($('s-sp').value/100).toFixed(2),keep_pitch:$('sp-kp').checked}));tg.close();}
 
-    trackEl.addEventListener('touchstart', function(e) {
-      e.preventDefault(); e.stopPropagation();
-      knobEl.classList.add('big');
-      moveSlider(key, e.touches[0].clientX, trackEl);
-    }, {passive: false});
+function uP(){['br','ct','sa','tm','bl','vn','sh'].forEach(id=>$('v-'+id).textContent=$('s-'+id).value);}
+function rP(){['br','ct','sa','tm','bl','vn','sh'].forEach(id=>$('s-'+id).value=0);uP();toast('reset');}
+function pP(n){const p={bw:[0,10,-100,0,0,0,5],sepia:[5,5,-60,40,0,20,0],vivid:[10,20,50,0,0,0,10],cold:[0,5,-10,-50,0,10,0],warm:[5,5,10,50,0,10,0],vintage:[-5,15,-30,20,1,40,0],dramatic:[-10,40,20,-10,0,50,15]}[n];if(!p)return;['br','ct','sa','tm','bl','vn','sh'].forEach((id,i)=>$('s-'+id).value=p[i]);uP();document.querySelectorAll('#screen-photo .chip').forEach(c=>c.classList.remove('active'));event.target.classList.add('active');}
+function sendP(){tg.sendData(JSON.stringify({type:'photo_fx',brightness:+$('s-br').value,contrast:+$('s-ct').value,saturation:+$('s-sa').value,temperature:+$('s-tm').value,blur:+$('s-bl').value,vignette:+$('s-vn').value,sharpen:+$('s-sh').value}));tg.close();}
 
-    trackEl.addEventListener('touchmove', function(e) {
-      e.preventDefault(); e.stopPropagation();
-      moveSlider(key, e.touches[0].clientX, trackEl);
-    }, {passive: false});
+function genW(){const c=$('tl-bar');c.innerHTML='';for(let i=0;i<60;i++){const s=document.createElement('span');s.style.height=(6+Math.random()*28)+'px';c.appendChild(s);}}
+function uTL(){const d=parseInt($('v-dur').value)||60,sp=$('t-s').value/10;let ep=$('t-e').value/10;if(ep<=sp)ep=sp+1;$('tl-fill').style.left=sp+'%';$('tl-fill').style.right=(100-ep)+'%';const ss=Math.round(d*sp/100),es=Math.round(d*ep/100);$('tl-st').textContent=ft(ss);$('tl-et').textContent=ft(es);}
+function ft(s){return Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);}
+function sendVT(){const d=parseInt($('v-dur').value)||60,sp=$('t-s').value/10,ep=$('t-e').value/10;tg.sendData(JSON.stringify({type:'video_trim',start:Math.round(d*sp/100),end:Math.round(d*ep/100),duration:d}));tg.close();}
 
-    trackEl.addEventListener('touchend', function() { knobEl.classList.remove('big'); });
-    trackEl.addEventListener('touchcancel', function() { knobEl.classList.remove('big'); });
+function fd(el,t){fadeT=t;el.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');}
+function sendM(){tg.sendData(JSON.stringify({type:'mashup_settings',crossfade:+$('s-cf').value,fade_type:fadeT}));tg.close();}
 
-    var mouseDown = false;
-    trackEl.addEventListener('mousedown', function(e) {
-      e.preventDefault(); mouseDown = true;
-      knobEl.classList.add('big');
-      moveSlider(key, e.clientX, trackEl);
-    });
-    document.addEventListener('mousemove', function(e) {
-      if (!mouseDown) return;
-      moveSlider(key, e.clientX, trackEl);
-    });
-    document.addEventListener('mouseup', function() {
-      if (mouseDown) { mouseDown = false; knobEl.classList.remove('big'); }
-    });
-  })(SLIDERS[ti].key);
-}
-
-/* ========== SLIDER LOGIC ========== */
-function getCfg(key) {
-  for (var i = 0; i < SLIDERS.length; i++) {
-    if (SLIDERS[i].key === key) return SLIDERS[i];
-  }
-  return null;
-}
-
-function moveSlider(key, clientX, trackEl) {
-  var rect = trackEl.getBoundingClientRect();
-  var pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-  var cfg = getCfg(key);
-  var raw = cfg.mn + pct * (cfg.mx - cfg.mn);
-  var snapped = Math.round(raw / cfg.step) * cfg.step;
-  setVal(key, Math.max(cfg.mn, Math.min(cfg.mx, snapped)));
-}
-
-function setVal(key, v) {
-  var cfg = getCfg(key);
-  v = Math.max(cfg.mn, Math.min(cfg.mx, Math.round(v / cfg.step) * cfg.step));
-  val[key] = v;
-
-  var pct = (v - cfg.mn) / (cfg.mx - cfg.mn) * 100;
-  var d = dom[key];
-  d.fillEl.style.width = pct + '%';
-  d.knobEl.style.left = pct + '%';
-  d.valEl.textContent = cfg.fmt(v);
-
-  drawWave();
-  hiliteChips();
-  updateBtn();
-}
-
-/* ========== PRESETS HIGHLIGHT ========== */
-function hiliteChips() {
-  for (var i = 0; i < chips.length; i++) {
-    var pk = chips[i].getAttribute('data-pk');
-    var p = PRESETS[pk];
-    if (!p) continue;
-    var ok = true;
-    for (var k in p) { if (Math.abs(val[k] - p[k]) > 1) { ok = false; break; } }
-    chips[i].classList.toggle('on', ok);
-  }
-}
-
-/* ========== MAIN BUTTON ========== */
-function isDefault() {
-  for (var i = 0; i < SLIDERS.length; i++) {
-    if (val[SLIDERS[i].key] !== SLIDERS[i].def) return false;
-  }
-  return true;
-}
-
-function updateBtn() {
-  if (!tg) return;
-  try { tg.MainButton.color = isDefault() ? '#3a3a4e' : '#7c5cfc'; } catch(e) {}
-}
-
-function doApply() {
-  if (isDefault()) {
-    var msg = 'Измените хотя бы один параметр';
-    if (tg) { try { tg.showAlert(msg); } catch(e) { alert(msg); } }
-    else { alert(msg); }
-    return;
-  }
-
-  var data = JSON.stringify({
-    pitch: Number((val.pitch / 100).toFixed(2)),
-    speed: Number((val.speed / 10).toFixed(1)),
-    reverb: val.reverb,
-    bass: val.bass
-  });
-
-  if (tg) {
-    try { tg.sendData(data); } catch(e) { alert('Ошибка: ' + e.message); }
-  } else {
-    alert('Данные: ' + data);
-  }
-}
-
-/* ========== WAVEFORM ========== */
-var wCanvas = document.getElementById('waveCanvas');
-var wCtx = wCanvas.getContext('2d');
-var wData = [];
-
-function initWave() {
-  var dpr = window.devicePixelRatio || 1;
-  var w = wCanvas.offsetWidth;
-  var h = wCanvas.offsetHeight;
-  wCanvas.width = w * dpr;
-  wCanvas.height = h * dpr;
-  wCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  wData = [];
-  for (var i = 0; i < w; i++) {
-    var t = i / w;
-    var a = 0.3 + 0.7 * (
-      Math.sin(t*12)*0.3 + Math.sin(t*28+1)*0.25 +
-      Math.sin(t*60)*0.15 + Math.sin(t*120)*0.1 + Math.random()*0.2
-    );
-    wData.push(Math.max(0.05, Math.min(1, a)));
-  }
-  drawWave();
-}
-
-function drawWave() {
-  var w = wCanvas.offsetWidth;
-  var h = wCanvas.offsetHeight;
-  wCtx.clearRect(0, 0, w, h);
-
-  var pF = val.pitch / 100;
-  var sF = val.speed / 10;
-  var bF = val.bass / 15;
-  var rF = val.reverb / 30;
-
-  for (var i = 0; i < w; i++) {
-    var si = Math.floor((i * sF) % wData.length);
-    var a = wData[si] * pF;
-    a += bF * 0.3 * Math.sin(i * 0.02);
-    a = Math.max(0.02, Math.min(1, a));
-
-    var bH = a * h * 0.85;
-    var y = (h - bH) / 2;
-
-    if (rF > 0) {
-      wCtx.fillStyle = 'rgba(124,92,252,' + (rF*0.15) + ')';
-      var eH = a * rF * 0.4 * h * 0.85;
-      wCtx.fillRect(i, (h-eH)/2, 1, eH);
-    }
-
-    var g = wCtx.createLinearGradient(0, y, 0, y+bH);
-    g.addColorStop(0, 'rgba(124,92,252,' + (0.5+a*0.5) + ')');
-    g.addColorStop(0.5, 'rgba(168,85,247,' + (0.7+a*0.3) + ')');
-    g.addColorStop(1, 'rgba(252,92,140,' + (0.3+bF*0.5) + ')');
-    wCtx.fillStyle = g;
-    wCtx.fillRect(i, y, 1, bH);
-  }
-}
-
-/* ========== INIT ========== */
-window.addEventListener('resize', initWave);
-initWave();
-for (var i = 0; i < SLIDERS.length; i++) { setVal(SLIDERS[i].key, SLIDERS[i].def); }
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2000);}
+uA();uP();uEQ();uRT();uSp();
 </script>
 </body>
 </html>
