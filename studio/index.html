@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SCevilBOT Studio</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg: #0a0a0f;
+  --bg2: #12121a;
+  --bg3: #1a1a28;
+  --card: #16162280;
+  --border: #ffffff10;
+  --text: #e8e8f0;
+  --text2: #8888a0;
+  --accent: #6c5ce7;
+  --accent2: #a855f7;
+  --green: #00d68f;
+  --red: #ff6b6b;
+  --orange: #ffa726;
+  --blue: #42a5f5;
+  --glow: 0 0 20px rgba(108,92,231,0.3);
+  --radius: 16px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow-x: hidden; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* === SCREENS === */
+.screen { display: none; min-height: 100vh; padding: 16px; padding-bottom: 100px; animation: fadeIn 0.3s ease; }
+.screen.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* === HEADER === */
+.header {
+  text-align: center;
+  padding: 20px 0 24px;
+}
+.header h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+.header p { color: var(--text2); font-size: 13px; margin-top: 4px; }
+
+/* === MENU GRID === */
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+.menu-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+.menu-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.menu-card:active { transform: scale(0.96); }
+.menu-card:active::before { opacity: 1; }
+.menu-card .icon { font-size: 32px; margin-bottom: 8px; }
+.menu-card .title { font-weight: 600; font-size: 14px; }
+.menu-card .desc { color: var(--text2); font-size: 11px; margin-top: 4px; line-height: 1.3; }
+.menu-card.wide { grid-column: 1 / -1; }
+
+/* === BACK BUTTON === */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+/* === SECTION TITLE === */
+.section-title {
+  font-size: 13px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 20px 0 12px;
+  font-weight: 600;
+}
+
+/* === SLIDER CONTROL === */
+.slider-group { margin-bottom: 16px; }
+.slider-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.slider-label span { font-size: 14px; font-weight: 500; }
+.slider-label .val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--accent);
+  min-width: 40px;
+  text-align: right;
+}
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg3);
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  cursor: pointer;
+  box-shadow: var(--glow);
+}
+
+/* === BUTTONS === */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: white;
+}
+.btn-secondary {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-row { display: flex; gap: 8px; margin-top: 12px; }
+.btn-row .btn { flex: 1; }
+
+/* === PRESET CHIPS === */
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.chip {
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.chip:active, .chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+/* === TIMELINE (video trimmer) === */
+.timeline-wrap {
+  background: var(--bg3);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid var(--border);
+}
+.timeline {
+  position: relative;
+  height: 48px;
+  background: var(--bg);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+.timeline-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: linear-gradient(90deg, rgba(108,92,231,0.3), rgba(168,85,247,0.3));
+  border-left: 3px solid var(--accent);
+  border-right: 3px solid var(--accent2);
+}
+.timeline-bar {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+.timeline-bar .wave-line {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.timeline-bar .wave-line span {
+  display: block;
+  width: 2px;
+  background: var(--text2);
+  border-radius: 1px;
+  opacity: 0.4;
+}
+.time-display {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: var(--accent);
+}
+.time-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  width: 80px;
+  text-align: center;
+}
+
+/* === CARD === */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  backdrop-filter: blur(10px);
+}
+
+/* === PHOTO PREVIEW === */
+.preview-area {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--bg3);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.preview-area canvas { max-width: 100%; max-height: 100%; }
+.preview-area .placeholder { color: var(--text2); font-size: 48px; }
+
+/* === STAT BARS === */
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.stat-row .label { font-size: 13px; min-width: 70px; color: var(--text2); }
+.stat-row .bar-wrap { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.stat-row .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.stat-row .count { font-family: 'JetBrains Mono', monospace; font-size: 13px; min-width: 30px; text-align: right; }
+
+/* === BOTTOM SAFE AREA === */
+.bottom-spacer { height: 80px; }
+
+/* === TOAST === */
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 100;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Color theme from Telegram */
+body.tg-theme { --bg: var(--tg-theme-bg-color, #0a0a0f); }
+</style>
+</head>
+<body>
+
+<!-- ============ MAIN MENU ============ -->
+<div id="screen-menu" class="screen active">
+  <div class="header">
+    <h1>⚡ SCevilBOT Studio</h1>
+    <p>Все инструменты в одном месте</p>
+  </div>
+
+  <div class="menu-grid">
+    <div class="menu-card" onclick="openScreen('audio')">
+      <div class="icon">🎵</div>
+      <div class="title">Аудио FX</div>
+      <div class="desc">Питч, скорость, реверб, бас</div>
+    </div>
+    <div class="menu-card" onclick="openScreen('photo')">
+      <div class="icon">🖼</div>
+      <div class="title">Фото</div>
+      <div class="desc">Яркость, контраст, фильтры</div>
+    </div>
+    <div class="menu-card" onclick="openScreen('video')">
+      <div class="icon">✂️</div>
+      <div class="title">Обрезка</div>
+      <div class="desc">Визуальный тримминг видео</div>
+    </div>
+    <div class="menu-card" onclick="openScreen('mashup')">
+      <div class="icon">🎶</div>
+      <div class="title">Mashup</div>
+      <div class="desc">Crossfade и микширование</div>
+    </div>
+    <div class="menu-card" onclick="openScreen('stats')">
+      <div class="icon">📊</div>
+      <div class="title">Dashboard</div>
+      <div class="desc">Статистика загрузок</div>
+    </div>
+    <div class="menu-card" onclick="openScreen('favs')">
+      <div class="icon">❤️</div>
+      <div class="title">Избранное</div>
+      <div class="desc">Плеер и папки</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ AUDIO FX ============ -->
+<div id="screen-audio" class="screen">
+  <div class="back-btn" onclick="openScreen('menu')">← Меню</div>
+  <div class="header">
+    <h1>🎵 Аудио FX</h1>
+    <p>Настрой звучание трека</p>
+  </div>
+
+  <div class="section-title">Быстрые пресеты</div>
+  <div class="chips">
+    <div class="chip" onclick="applyAudioPreset('nightcore')">🌸 Nightcore</div>
+    <div class="chip" onclick="applyAudioPreset('slowed')">🐢 Slowed</div>
+    <div class="chip" onclick="applyAudioPreset('bass')">🔊 Bass+</div>
+    <div class="chip" onclick="applyAudioPreset('reverb')">🏛 Reverb</div>
+    <div class="chip" onclick="applyAudioPreset('8d')">🎧 8D</div>
+    <div class="chip" onclick="applyAudioPreset('chipmunk')">🐿 Chipmunk</div>
+  </div>
+
+  <div class="section-title">Тонкая настройка</div>
+  <div class="card">
+    <div class="slider-group">
+      <div class="slider-label"><span>🗣 Тон (Pitch)</span><span class="val" id="v-pitch">1.00</span></div>
+      <input type="range" id="s-pitch" min="50" max="150" value="100" oninput="updateAudioSlider()">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>🚀 Скорость</span><span class="val" id="v-speed">1.0</span></div>
+      <input type="range" id="s-speed" min="5" max="20" value="10" oninput="updateAudioSlider()">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>🏛 Реверб</span><span class="val" id="v-reverb">0</span></div>
+      <input type="range" id="s-reverb" min="0" max="30" value="0" oninput="updateAudioSlider()">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>🎸 Bass Boost</span><span class="val" id="v-bass">0</span></div>
+      <input type="range" id="s-bass" min="0" max="15" value="0" oninput="updateAudioSlider()">
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="sendAudioFX()">✅ Применить</button>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="resetAudioSliders()">🔄 Сброс</button>
+    <button class="btn btn-secondary" onclick="sendAudioFX(true)">💾 Сохранить</button>
+  </div>
+</div>
+
+<!-- ============ PHOTO EDITOR ============ -->
+<div id="screen-photo" class="screen">
+  <div class="back-btn" onclick="openScreen('menu')">← Меню</div>
+  <div class="header">
+    <h1>🖼 Фото-редактор</h1>
+    <p>Настрой фильтры для фото</p>
+  </div>
+
+  <div class="section-title">Быстрые фильтры</div>
+  <div class="chips">
+    <div class="chip" onclick="applyPhotoPreset('bw')">⬛ Ч/Б</div>
+    <div class="chip" onclick="applyPhotoPreset('sepia')">🟤 Сепия</div>
+    <div class="chip" onclick="applyPhotoPreset('vivid')">🌈 Яркий</div>
+    <div class="chip" onclick="applyPhotoPreset('cold')">❄️ Холод</div>
+    <div class="chip" onclick="applyPhotoPreset('warm')">☀️ Тепло</div>
+    <div class="chip" onclick="applyPhotoPreset('vintage')">📷 Винтаж</div>
+    <div class="chip" onclick="applyPhotoPreset('dramatic')">🎭 Драма</div>
+  </div>
+
+  <div class="section-title">Ручная настройка</div>
+  <div class="card">
+    <div class="slider-group">
+      <div class="slider-label"><span>☀️ Яркость</span><span class="val" id="v-brightness">0</span></div>
+      <input type="range" id="s-brightness" min="-100" max="100" value="0" oninput="updatePhotoSlider()">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>🔲 Контраст</span><span class="val" id="v-contrast">0</span></div>
+      <input type="range" id="s-contrast" min="-100" max="100" value="0" oninput="updatePhotoSlider()">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>🎨 Насыщенность</span><span class="val" id="v-saturation">0</span></div>
+      <input type="range" id="s-saturation" min="-100" max="100" value="0" oninput="updatePhotoSlider()">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>🌡 Температура</span><span class="val" id="v-temperature">0</span></div>
+      <input type="range" id="s-temperature" min="-100" max="100" value="0" oninput="updatePhotoSlider()">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>💫 Размытие</span><span class="val" id="v-blur">0</span></div>
+      <input type="range" id="s-blur" min="0" max="20" value="0" oninput="updatePhotoSlider()">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>🔆 Виньетка</span><span class="val" id="v-vignette">0</span></div>
+      <input type="range" id="s-vignette" min="0" max="100" value="0" oninput="updatePhotoSlider()">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>📐 Резкость</span><span class="val" id="v-sharpen">0</span></div>
+      <input type="range" id="s-sharpen" min="0" max="30" value="0" oninput="updatePhotoSlider()">
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="sendPhotoFX()">✅ Применить</button>
+  <button class="btn btn-secondary" onclick="resetPhotoSliders()" style="margin-top:8px">🔄 Сброс</button>
+</div>
+
+<!-- ============ VIDEO TRIMMER ============ -->
+<div id="screen-video" class="screen">
+  <div class="back-btn" onclick="openScreen('menu')">← Меню</div>
+  <div class="header">
+    <h1>✂️ Обрезка видео</h1>
+    <p>Выбери начало и конец</p>
+  </div>
+
+  <div class="card">
+    <div class="timeline-wrap">
+      <div class="timeline" id="timeline">
+        <div class="timeline-fill" id="timeline-fill" style="left:0%;right:0%"></div>
+        <div class="timeline-bar" id="wave-container"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Начало</div>
+          <input type="range" id="trim-start" min="0" max="1000" value="0" oninput="updateTimeline()">
+        </div>
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Конец</div>
+          <input type="range" id="trim-end" min="0" max="1000" value="1000" oninput="updateTimeline()">
+        </div>
+      </div>
+      <div class="time-display" style="margin-top:8px">
+        <span id="trim-start-time">0:00</span>
+        <span style="color:var(--text2)">→</span>
+        <span id="trim-end-time">--:--</span>
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <div class="slider-label"><span>⏱ Длительность видео (сек)</span></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input type="number" id="video-duration" class="time-input" value="60" min="1" max="3600" style="width:100%" oninput="updateTimeline()">
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="sendVideoTrim()">✂️ Обрезать</button>
+</div>
+
+<!-- ============ MASHUP ============ -->
+<div id="screen-mashup" class="screen">
+  <div class="back-btn" onclick="openScreen('menu')">← Меню</div>
+  <div class="header">
+    <h1>🎶 Mashup</h1>
+    <p>Настрой переходы между треками</p>
+  </div>
+
+  <div class="card">
+    <div class="slider-group">
+      <div class="slider-label"><span>🔀 Crossfade (сек)</span><span class="val" id="v-crossfade">5</span></div>
+      <input type="range" id="s-crossfade" min="1" max="15" value="5" oninput="document.getElementById('v-crossfade').textContent=this.value">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>📊 Fade тип</span></div>
+      <div class="chips" style="margin:8px 0 0">
+        <div class="chip active" onclick="setFadeType(this,'tri')">📐 Линейный</div>
+        <div class="chip" onclick="setFadeType(this,'exp')">📈 Expo</div>
+        <div class="chip" onclick="setFadeType(this,'log')">📉 Log</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p style="color:var(--text2);font-size:13px;line-height:1.5">
+      💡 Отправь боту несколько аудио, нажми 🎶 Mashup на каждом, затем ✅ Создать.
+      Здесь можно настроить длительность и тип перехода.
+    </p>
+  </div>
+
+  <button class="btn btn-primary" onclick="sendMashupSettings()">✅ Применить настройки</button>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="screen-stats" class="screen">
+  <div class="back-btn" onclick="openScreen('menu')">← Меню</div>
+  <div class="header">
+    <h1>📊 Dashboard</h1>
+    <p>Статистика загрузок</p>
+  </div>
+
+  <div class="card">
+    <div class="section-title" style="margin-top:0">Платформы</div>
+    <div id="stats-platforms">
+      <div class="stat-row"><span class="label">SoundCloud</span><div class="bar-wrap"><div class="bar-fill" style="width:70%;background:var(--orange)"></div></div><span class="count">—</span></div>
+      <div class="stat-row"><span class="label">YouTube</span><div class="bar-wrap"><div class="bar-fill" style="width:50%;background:var(--red)"></div></div><span class="count">—</span></div>
+      <div class="stat-row"><span class="label">Instagram</span><div class="bar-wrap"><div class="bar-fill" style="width:30%;background:var(--accent)"></div></div><span class="count">—</span></div>
+      <div class="stat-row"><span class="label">TikTok</span><div class="bar-wrap"><div class="bar-fill" style="width:20%;background:var(--blue)"></div></div><span class="count">—</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p style="color:var(--text2);font-size:13px;line-height:1.5">
+      📈 Отправь /stats или /profile боту чтобы увидеть полную статистику. Данные обновятся здесь автоматически.
+    </p>
+  </div>
+
+  <button class="btn btn-secondary" onclick="requestStats()">🔄 Обновить</button>
+</div>
+
+<!-- ============ FAVORITES ============ -->
+<div id="screen-favs" class="screen">
+  <div class="back-btn" onclick="openScreen('menu')">← Меню</div>
+  <div class="header">
+    <h1>❤️ Избранное</h1>
+    <p>Твои сохранённые треки</p>
+  </div>
+
+  <div class="chips" id="fav-folders">
+    <div class="chip active" onclick="selectFolder(this,'all')">Все</div>
+  </div>
+
+  <div id="fav-list">
+    <div class="card" style="text-align:center;padding:32px">
+      <div style="font-size:48px;margin-bottom:12px">🎵</div>
+      <p style="color:var(--text2);font-size:14px;line-height:1.5">
+        Ставь реакции на треки в чате чтобы добавить в избранное.<br>
+        Используй /favorites для просмотра.
+      </p>
+    </div>
+  </div>
+
+  <button class="btn btn-secondary" onclick="requestFavorites()">🔄 Обновить</button>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="bottom-spacer"></div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+// Apply Telegram theme
+if (tg.themeParams) {
+  const tp = tg.themeParams;
+  if (tp.bg_color) document.documentElement.style.setProperty('--bg', tp.bg_color);
+}
+
+let currentFadeType = 'tri';
+
+// === SCREEN NAVIGATION ===
+function openScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  window.scrollTo(0, 0);
+  
+  // Setup main button based on screen
+  if (id === 'menu') {
+    tg.MainButton.hide();
+  }
+
+  // Generate waveform for video screen
+  if (id === 'video') {
+    generateWaveform();
+    updateTimeline();
+  }
+}
+
+// Check URL params for direct screen open
+const params = new URLSearchParams(window.location.search);
+const mode = params.get('mode');
+if (mode && ['audio','photo','video','mashup','stats','favs'].includes(mode)) {
+  openScreen(mode);
+}
+// Video duration from URL
+const durParam = params.get('dur');
+if (durParam) {
+  const durEl = document.getElementById('video-duration');
+  if (durEl) durEl.value = parseInt(durParam) || 60;
+}
+
+// === AUDIO FX ===
+function updateAudioSlider() {
+  document.getElementById('v-pitch').textContent = (document.getElementById('s-pitch').value / 100).toFixed(2);
+  document.getElementById('v-speed').textContent = (document.getElementById('s-speed').value / 10).toFixed(1);
+  document.getElementById('v-reverb').textContent = document.getElementById('s-reverb').value;
+  document.getElementById('v-bass').textContent = document.getElementById('s-bass').value;
+}
+
+function resetAudioSliders() {
+  document.getElementById('s-pitch').value = 100;
+  document.getElementById('s-speed').value = 10;
+  document.getElementById('s-reverb').value = 0;
+  document.getElementById('s-bass').value = 0;
+  updateAudioSlider();
+  showToast('🔄 Сброшено');
+}
+
+function applyAudioPreset(name) {
+  const presets = {
+    nightcore: { pitch: 125, speed: 12, reverb: 0, bass: 0 },
+    slowed:    { pitch: 85, speed: 9, reverb: 10, bass: 3 },
+    bass:      { pitch: 100, speed: 10, reverb: 0, bass: 12 },
+    reverb:    { pitch: 100, speed: 10, reverb: 20, bass: 0 },
+    '8d':      { pitch: 100, speed: 10, reverb: 5, bass: 2 },
+    chipmunk:  { pitch: 150, speed: 10, reverb: 0, bass: 0 },
+  };
+  const p = presets[name];
+  if (!p) return;
+  document.getElementById('s-pitch').value = p.pitch;
+  document.getElementById('s-speed').value = p.speed;
+  document.getElementById('s-reverb').value = p.reverb;
+  document.getElementById('s-bass').value = p.bass;
+  updateAudioSlider();
+  // Highlight chip
+  document.querySelectorAll('#screen-audio .chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function sendAudioFX(savePreset) {
+  const data = {
+    type: 'audio_fx',
+    pitch: parseFloat((document.getElementById('s-pitch').value / 100).toFixed(2)),
+    speed: parseFloat((document.getElementById('s-speed').value / 10).toFixed(1)),
+    reverb: parseInt(document.getElementById('s-reverb').value),
+    bass: parseInt(document.getElementById('s-bass').value),
+  };
+  if (savePreset) data.save_preset = true;
+  tg.sendData(JSON.stringify(data));
+  tg.close();
+}
+
+// === PHOTO EDITOR ===
+function updatePhotoSlider() {
+  const ids = ['brightness','contrast','saturation','temperature','blur','vignette','sharpen'];
+  ids.forEach(id => {
+    document.getElementById('v-'+id).textContent = document.getElementById('s-'+id).value;
+  });
+}
+
+function resetPhotoSliders() {
+  ['brightness','contrast','saturation','temperature','blur','vignette','sharpen'].forEach(id => {
+    document.getElementById('s-'+id).value = (id === 'blur' || id === 'vignette' || id === 'sharpen') ? 0 : 0;
+  });
+  updatePhotoSlider();
+  document.querySelectorAll('#screen-photo .chip').forEach(c => c.classList.remove('active'));
+  showToast('🔄 Сброшено');
+}
+
+function applyPhotoPreset(name) {
+  const presets = {
+    bw:       { brightness: 0, contrast: 10, saturation: -100, temperature: 0, blur: 0, vignette: 0, sharpen: 5 },
+    sepia:    { brightness: 5, contrast: 5, saturation: -60, temperature: 40, blur: 0, vignette: 20, sharpen: 0 },
+    vivid:    { brightness: 10, contrast: 20, saturation: 50, temperature: 0, blur: 0, vignette: 0, sharpen: 10 },
+    cold:     { brightness: 0, contrast: 5, saturation: -10, temperature: -50, blur: 0, vignette: 10, sharpen: 0 },
+    warm:     { brightness: 5, contrast: 5, saturation: 10, temperature: 50, blur: 0, vignette: 10, sharpen: 0 },
+    vintage:  { brightness: -5, contrast: 15, saturation: -30, temperature: 20, blur: 1, vignette: 40, sharpen: 0 },
+    dramatic: { brightness: -10, contrast: 40, saturation: 20, temperature: -10, blur: 0, vignette: 50, sharpen: 15 },
+  };
+  const p = presets[name];
+  if (!p) return;
+  Object.keys(p).forEach(k => { document.getElementById('s-'+k).value = p[k]; });
+  updatePhotoSlider();
+  document.querySelectorAll('#screen-photo .chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function sendPhotoFX() {
+  const data = {
+    type: 'photo_fx',
+    brightness: parseInt(document.getElementById('s-brightness').value),
+    contrast: parseInt(document.getElementById('s-contrast').value),
+    saturation: parseInt(document.getElementById('s-saturation').value),
+    temperature: parseInt(document.getElementById('s-temperature').value),
+    blur: parseInt(document.getElementById('s-blur').value),
+    vignette: parseInt(document.getElementById('s-vignette').value),
+    sharpen: parseInt(document.getElementById('s-sharpen').value),
+  };
+  tg.sendData(JSON.stringify(data));
+  tg.close();
+}
+
+// === VIDEO TRIMMER ===
+function generateWaveform() {
+  const container = document.getElementById('wave-container');
+  container.innerHTML = '';
+  for (let i = 0; i < 60; i++) {
+    const div = document.createElement('div');
+    div.className = 'wave-line';
+    const span = document.createElement('span');
+    const h = 8 + Math.random() * 32;
+    span.style.height = h + 'px';
+    div.appendChild(span);
+    container.appendChild(div);
+  }
+}
+
+function updateTimeline() {
+  const dur = parseInt(document.getElementById('video-duration').value) || 60;
+  const startPct = parseInt(document.getElementById('trim-start').value) / 10;
+  let endPct = parseInt(document.getElementById('trim-end').value) / 10;
+  if (endPct <= startPct) endPct = startPct + 1;
+  
+  const fill = document.getElementById('timeline-fill');
+  fill.style.left = startPct + '%';
+  fill.style.right = (100 - endPct) + '%';
+  
+  const startSec = Math.round(dur * startPct / 100);
+  const endSec = Math.round(dur * endPct / 100);
+  
+  document.getElementById('trim-start-time').textContent = formatTime(startSec);
+  document.getElementById('trim-end-time').textContent = formatTime(endSec);
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function sendVideoTrim() {
+  const dur = parseInt(document.getElementById('video-duration').value) || 60;
+  const startPct = parseInt(document.getElementById('trim-start').value) / 10;
+  const endPct = parseInt(document.getElementById('trim-end').value) / 10;
+  const data = {
+    type: 'video_trim',
+    start: Math.round(dur * startPct / 100),
+    end: Math.round(dur * endPct / 100),
+    duration: dur,
+  };
+  tg.sendData(JSON.stringify(data));
+  tg.close();
+}
+
+// === MASHUP ===
+function setFadeType(el, type) {
+  currentFadeType = type;
+  el.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function sendMashupSettings() {
+  const data = {
+    type: 'mashup_settings',
+    crossfade: parseInt(document.getElementById('s-crossfade').value),
+    fade_type: currentFadeType,
+  };
+  tg.sendData(JSON.stringify(data));
+  tg.close();
+}
+
+// === STATS & FAVS ===
+function requestStats() {
+  tg.sendData(JSON.stringify({ type: 'request_stats' }));
+  showToast('📊 Запрос отправлен');
+}
+
+function requestFavorites() {
+  tg.sendData(JSON.stringify({ type: 'request_favorites' }));
+  showToast('❤️ Запрос отправлен');
+}
+
+function selectFolder(el, name) {
+  el.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// === TOAST ===
+function showToast(text) {
+  const t = document.getElementById('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// Init
+updateAudioSlider();
+updatePhotoSlider();
+</script>
+</body>
+</html>
