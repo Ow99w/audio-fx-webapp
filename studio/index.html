@@ -134,6 +134,11 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;hei
 <div id="screen-audio" class="screen">
   <div class="back-btn" onclick="go('menu')">‹ back</div>
   <div class="header"><h1>Audio FX</h1><p>send audio first</p></div>
+  
+  <!-- Visual feedback bars -->
+  <div id="audio-viz" style="display:flex;align-items:flex-end;justify-content:center;gap:2px;height:50px;margin-bottom:16px;padding:0 20px">
+  </div>
+  
   <div class="section-title">presets</div>
   <div class="chips"><div class="chip" onclick="aP('nightcore')">nightcore</div><div class="chip" onclick="aP('slowed')">slowed</div><div class="chip" onclick="aP('bass')">bass+</div><div class="chip" onclick="aP('reverb')">reverb</div><div class="chip" onclick="aP('8d')">8D</div><div class="chip" onclick="aP('chipmunk')">chipmunk</div></div>
   <div class="card">
@@ -189,7 +194,21 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;hei
 
 <div id="screen-photo" class="screen">
   <div class="back-btn" onclick="go('menu')">‹ back</div>
-  <div class="header"><h1>Photo FX</h1><p>send photo first</p></div>
+  <div class="header"><h1>Photo FX</h1><p>live preview</p></div>
+  
+  <!-- Preview area -->
+  <div id="photo-preview-wrap" style="width:100%;aspect-ratio:1;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
+    <canvas id="photo-canvas" style="max-width:100%;max-height:100%;display:none"></canvas>
+    <div id="photo-placeholder" style="text-align:center;padding:20px">
+      <div style="font-size:36px;margin-bottom:8px;opacity:0.5">🖼</div>
+      <label style="display:inline-block;padding:10px 20px;background:var(--accent);border-radius:8px;color:white;font-size:12px;font-family:'Share Tech Mono',monospace;cursor:pointer;letter-spacing:1px">
+        LOAD PHOTO
+        <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="loadPhoto(this)">
+      </label>
+      <div style="font-size:10px;color:var(--text2);margin-top:8px">или отправь фото боту в чат</div>
+    </div>
+  </div>
+
   <div class="section-title">filters</div>
   <div class="chips"><div class="chip" onclick="pP('bw')">B&W</div><div class="chip" onclick="pP('sepia')">sepia</div><div class="chip" onclick="pP('vivid')">vivid</div><div class="chip" onclick="pP('cold')">cold</div><div class="chip" onclick="pP('warm')">warm</div><div class="chip" onclick="pP('vintage')">vintage</div><div class="chip" onclick="pP('dramatic')">drama</div></div>
   <div class="card">
@@ -340,7 +359,7 @@ setInterval(()=>{const t=$('main-title');if(t&&Math.random()<0.15){
 }},2500);
 
 // ============ NAV ============
-function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$('screen-'+id).classList.add('active');window.scrollTo(0,0);if(id==='video'){genW();uTL();}}
+function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$('screen-'+id).classList.add('active');window.scrollTo(0,0);if(id==='video'){genW();uTL();}if(id==='audio'){startAudioViz();}else{stopAudioViz();}}
 const par=new URLSearchParams(location.search);const m=par.get('mode');if(m)go(m);
 const dp=par.get('dur');if(dp&&$('v-dur'))$('v-dur').value=parseInt(dp)||60;
 
@@ -350,8 +369,46 @@ function selFmt(el,f){document.querySelectorAll('.format-btn').forEach(b=>b.clas
 function pT(s){if(!s||!s.trim())return null;const p=s.trim().split(':');return p.length===2?parseInt(p[0])*60+parseInt(p[1]):parseInt(p[0])||null;}
 function sendDL(){const u=$('dl-url').value.trim();if(!u){toast('no url');return;}const d={type:'download',url:u,format:selF};const ts=pT($('dl-ts').value),te=pT($('dl-te').value);if(ts!==null)d.trim_start=ts;if(te!==null)d.trim_end=te;tg.sendData(JSON.stringify(d));tg.close();}
 
-// ============ AUDIO ============
-function uA(){$('v-pitch').textContent=($('s-pitch').value/100).toFixed(2);$('v-speed').textContent=($('s-speed').value/10).toFixed(1);$('v-reverb').textContent=$('s-reverb').value;$('v-bass').textContent=$('s-bass').value;}
+// ============ AUDIO with VISUAL FEEDBACK ============
+// Generate viz bars
+(function(){const c=$('audio-viz');for(let i=0;i<32;i++){const b=document.createElement('div');b.style.cssText='flex:1;background:var(--accent);border-radius:1px;transition:height 0.15s;opacity:0.6';b.style.height='4px';c.appendChild(b);}})();
+
+function updateAudioViz(){
+  const bars=$('audio-viz').children;
+  const pitch=+$('s-pitch').value/100;
+  const speed=+$('s-speed').value/10;
+  const reverb=+$('s-reverb').value;
+  const bass=+$('s-bass').value;
+  
+  for(let i=0;i<bars.length;i++){
+    const freq=i/bars.length; // 0=low, 1=high
+    let h=8+Math.random()*12; // base
+    // Bass boost affects low frequencies
+    if(freq<0.3) h+=bass*1.5;
+    // Pitch shifts the spectrum
+    const shifted=Math.sin((freq*pitch+Math.random()*0.1)*Math.PI*2)*8;
+    h+=Math.abs(shifted);
+    // Reverb adds overall sustain
+    h+=reverb*0.3;
+    // Speed affects animation energy
+    h*=(0.5+speed*0.5);
+    h=Math.max(3,Math.min(48,h));
+    bars[i].style.height=h+'px';
+    bars[i].style.opacity=(0.3+h/60).toFixed(2);
+  }
+}
+
+let audioVizInterval=null;
+function startAudioViz(){if(!audioVizInterval)audioVizInterval=setInterval(updateAudioViz,120);}
+function stopAudioViz(){if(audioVizInterval){clearInterval(audioVizInterval);audioVizInterval=null;}}
+
+function uA(){
+  $('v-pitch').textContent=($('s-pitch').value/100).toFixed(2);
+  $('v-speed').textContent=($('s-speed').value/10).toFixed(1);
+  $('v-reverb').textContent=$('s-reverb').value;
+  $('v-bass').textContent=$('s-bass').value;
+  updateAudioViz();
+}
 function rA(){[['s-pitch',100],['s-speed',10],['s-reverb',0],['s-bass',0]].forEach(([id,v])=>$(id).value=v);uA();toast('reset');}
 function aP(n){const p={nightcore:[125,12,0,0],slowed:[85,9,10,3],bass:[100,10,0,12],reverb:[100,10,20,0],'8d':[100,10,5,2],chipmunk:[150,10,0,0]}[n];if(!p)return;['s-pitch','s-speed','s-reverb','s-bass'].forEach((id,i)=>$(id).value=p[i]);uA();document.querySelectorAll('#screen-audio .chip').forEach(c=>c.classList.remove('active'));event.target.classList.add('active');}
 function sendA(save){const d={type:'audio_fx',pitch:+($('s-pitch').value/100).toFixed(2),speed:+($('s-speed').value/10).toFixed(1),reverb:+$('s-reverb').value,bass:+$('s-bass').value};if(save)d.save_preset=true;tg.sendData(JSON.stringify(d));tg.close();}
@@ -371,8 +428,104 @@ function uSp(){$('v-sp').textContent=($('s-sp').value/100).toFixed(2)+'x';}
 function setSp(v){$('s-sp').value=Math.round(v*100);uSp();document.querySelectorAll('#screen-speed .chip').forEach(c=>c.classList.remove('active'));event.target.classList.add('active');}
 function sendSp(){tg.sendData(JSON.stringify({type:'speed',speed:+($('s-sp').value/100).toFixed(2),keep_pitch:$('sp-kp').checked}));tg.close();}
 
-// ============ PHOTO ============
-function uP(){['br','ct','sa','tm','bl','vn','sh'].forEach(id=>$('v-'+id).textContent=$('s-'+id).value);}
+// ============ PHOTO with LIVE PREVIEW ============
+let photoImg=null, photoCv=null, photoCx=null;
+
+function loadPhoto(input){
+  if(!input.files||!input.files[0])return;
+  const file=input.files[0];
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const img=new Image();
+    img.onload=function(){
+      photoImg=img;
+      photoCv=$('photo-canvas');
+      photoCx=photoCv.getContext('2d');
+      // Scale to fit max 600px
+      const maxSz=600;
+      let w=img.width,h=img.height;
+      if(w>maxSz||h>maxSz){const r=Math.min(maxSz/w,maxSz/h);w=Math.round(w*r);h=Math.round(h*r);}
+      photoCv.width=w;photoCv.height=h;
+      photoCv.style.display='block';
+      $('photo-placeholder').style.display='none';
+      renderPhoto();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderPhoto(){
+  if(!photoImg||!photoCx)return;
+  const cv=photoCv,cx=photoCx,w=cv.width,h=cv.height;
+  
+  const br=+$('s-br').value;
+  const ct=+$('s-ct').value;
+  const sa=+$('s-sa').value;
+  const tm=+$('s-tm').value;
+  const bl=+$('s-bl').value;
+  const vn=+$('s-vn').value;
+  const sh=+$('s-sh').value;
+  
+  // CSS filters for brightness, contrast, saturation, blur
+  const brightness=1+br/100;
+  const contrast=1+ct/50;
+  const saturate=1+sa/100;
+  const blur=bl/2;
+  
+  cx.filter=`brightness(${brightness}) contrast(${contrast}) saturate(${saturate}) blur(${blur}px)`;
+  cx.drawImage(photoImg,0,0,w,h);
+  cx.filter='none';
+  
+  // Temperature overlay
+  if(tm!==0){
+    cx.globalCompositeOperation='overlay';
+    if(tm>0){
+      cx.fillStyle=`rgba(255,${180-tm},0,${Math.abs(tm)/300})`;
+    }else{
+      cx.fillStyle=`rgba(0,${180+tm},255,${Math.abs(tm)/300})`;
+    }
+    cx.fillRect(0,0,w,h);
+    cx.globalCompositeOperation='source-over';
+  }
+  
+  // Vignette
+  if(vn>0){
+    const strength=vn/100;
+    const grd=cx.createRadialGradient(w/2,h/2,w*0.2,w/2,h/2,w*0.75);
+    grd.addColorStop(0,'transparent');
+    grd.addColorStop(1,`rgba(0,0,0,${0.3+strength*0.6})`);
+    cx.fillStyle=grd;
+    cx.fillRect(0,0,w,h);
+  }
+  
+  // Sharpen (approximate via unsharp mask on canvas)
+  if(sh>0&&w>10&&h>10){
+    try{
+      const imgData=cx.getImageData(0,0,w,h);
+      const d=imgData.data;
+      const copy=new Uint8ClampedArray(d);
+      const amount=sh/15;
+      for(let y=1;y<h-1;y++){
+        for(let x=1;x<w-1;x++){
+          const i=(y*w+x)*4;
+          for(let c=0;c<3;c++){
+            const center=copy[i+c]*5;
+            const neighbors=copy[i-4+c]+copy[i+4+c]+copy[(i-w*4)+c]+copy[(i+w*4)+c];
+            const sharp=(center-neighbors)/4;
+            d[i+c]=Math.min(255,Math.max(0,copy[i+c]+sharp*amount));
+          }
+        }
+      }
+      cx.putImageData(imgData,0,0);
+    }catch(e){}
+  }
+}
+
+function uP(){
+  ['br','ct','sa','tm','bl','vn','sh'].forEach(id=>$('v-'+id).textContent=$('s-'+id).value);
+  if(photoImg)renderPhoto(); // Live update!
+}
 function rP(){['br','ct','sa','tm','bl','vn','sh'].forEach(id=>$('s-'+id).value=0);uP();toast('reset');}
 function pP(n){const p={bw:[0,10,-100,0,0,0,5],sepia:[5,5,-60,40,0,20,0],vivid:[10,20,50,0,0,0,10],cold:[0,5,-10,-50,0,10,0],warm:[5,5,10,50,0,10,0],vintage:[-5,15,-30,20,1,40,0],dramatic:[-10,40,20,-10,0,50,15]}[n];if(!p)return;['br','ct','sa','tm','bl','vn','sh'].forEach((id,i)=>$('s-'+id).value=p[i]);uP();document.querySelectorAll('#screen-photo .chip').forEach(c=>c.classList.remove('active'));event.target.classList.add('active');}
 function sendP(){tg.sendData(JSON.stringify({type:'photo_fx',brightness:+$('s-br').value,contrast:+$('s-ct').value,saturation:+$('s-sa').value,temperature:+$('s-tm').value,blur:+$('s-bl').value,vignette:+$('s-vn').value,sharpen:+$('s-sh').value}));tg.close();}
